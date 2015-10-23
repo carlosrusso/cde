@@ -17,8 +17,8 @@ define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore'],
   function(Base, Logger, $, _) {
-    
-  var MapEngine = Base.extend({
+
+  var MapEngine = Base.extend({  //Replace with BaseEvents ?
     tileServices: undefined,
     tileServicesOptions: undefined,
     tileLayer: function(name) {},

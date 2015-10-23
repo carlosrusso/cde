@@ -14,7 +14,7 @@
 define([
   'cdf/AddIn',
   'cdf/Dashboard.Clean',
-  '../../../NewMapComponentExt'],
+  '../../../NewMapComponent.ext'],
   function(AddIn, Dashboard, NewMapComponentExt) {
   
   var urlMarker = new AddIn({

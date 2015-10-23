@@ -177,6 +177,7 @@ define([
 
 
     setShape1: function (multiPolygon, shapeStyle, data) {
+      // Attempt at using GeoJSON as a viewModel
       var shapes = this.map.data.addGeoJson(multiPolygon);
       return;
     },

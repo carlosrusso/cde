@@ -46,14 +46,7 @@
   requirePaths['cde/components/PopupComponent'] = prefix + '/popup/PopupComponent';
   requirePaths['cde/components/ExportPopupComponent'] = prefix + '/popup/ExportPopupComponent';
 
-  requirePaths['cde/components/NewMapComponent'] = prefix + '/NewMapComponent/NewMapComponent';
-  requirePaths['cde/components/NewMapComponentExt'] = prefix + '/NewMapComponent/NewMapComponent.ext';
-  requirePaths['cde/components/mapAddIns'] = prefix + '/NewMapComponent/addIns/mapAddIns';
-  requirePaths['cde/components/addIns'] = prefix + '/NewMapComponent/addIns';
-  requirePaths['cde/components/MapComponentAsyncLoader'] = prefix + '/NewMapComponent/MapComponentAsyncLoader';
-  requirePaths['cde/components/MapEngine'] = prefix + '/NewMapComponent/mapengine';
-  requirePaths['cde/components/GoogleMapEngine'] = prefix + '/NewMapComponent/mapengine-google';
-  requirePaths['cde/components/OpenLayersEngine'] = prefix + '/NewMapComponent/mapengine-openlayers';
+  requirePaths['cde/components/NewMapComponent'] = prefix + '/Map/NewMapComponent';
 
   requirePaths['cde/components/ExportButtonComponent'] = prefix + '/exportButton/ExportButtonComponent';
 

@@ -77,10 +77,10 @@ define([
   'cdf/Logger',
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
-  './GoogleMapEngine',
-  './OpenLayersEngine',
-  './model/SelectionTree',
-  './mapAddIns',
+  './Map/mapengine-google',
+  './Map/mapengine-openlayers',
+  './Map/model/SelectionTree',
+  './Map/addIns/mapAddins',
   'css!./NewMapComponent'],
        function(UnmanagedComponent, Logger, $, _, GoogleMapEngine, OpenLayersEngine, SelectionTree ) {
 
@@ -387,7 +387,7 @@ define([
         this.model = new SelectionTree();
         var data = _.map(json.resultset, function(row, rowIdx){
           return {
-            id: rowIdx,
+            id: row[idx.id],
             label: row[0],
             rawData: row
           };
@@ -759,13 +759,7 @@ define([
             state[prop] = data[mappingProp];
           }
         });
-        /*
-         if (mapping.country != undefined) state.country = data[mapping.country];
-         if (mapping.city != undefined) state.city = data[mapping.city];
-         if (mapping.county != undefined) state.county = data[mapping.county];
-         if (mapping.region != undefined) state.region = data[mapping.region];
-         if (mapping.state != undefined) state.state = data[mapping.state];
-         */
+
         var myself = this;
         state.continuationFunction = function (location) {
           myself.renderMarker(location, data, mapping, position);
