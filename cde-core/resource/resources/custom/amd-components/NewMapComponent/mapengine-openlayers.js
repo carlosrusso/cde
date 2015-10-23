@@ -23,7 +23,7 @@ define([
   'amd!cdf/lib/underscore',
   'cdf/lib/OpenLayers',
   'cdf/lib/OpenStreetMap'
-], function (MapEngine, MapComponentAsyncLoader, Logger, $, _, OpenLayers) {
+], function (MapEngine, loadGoogleMaps, Logger, $, _, OpenLayers) {
 
   var OpenLayersEngine = MapEngine.extend({
     map: undefined,
@@ -43,12 +43,15 @@ define([
         });
       };
 
+      var deferred;
       if (contains('googleXXX')) {
         // This is (probably) only needed if we use the OpenLayers.Layer.Google API,
-        $.when(loadGoogleMaps('3', this.API_KEY)).then(mapComponent.initCallBack);
+        deferred = $.when(loadGoogleMaps('3', this.API_KEY));
       } else {
-        mapComponent.initCallBack();
+        deferred = $.Deferred();
+        deferred.resolve();
       }
+      return deferred.promise();
     },
 
 
@@ -213,7 +216,7 @@ define([
           new OpenLayers.Control.Navigation(),
           // new OpenLayers.Control.NavToolbar(),
           // new OpenLayers.Control.PanZoom(),
-          new OpenLayers.Control.ZoomPanel(),
+           new OpenLayers.Control.ZoomPanel(),
           new OpenLayers.Control.DragPan(),
           new OpenLayers.Control.PinchZoom(),
           new OpenLayers.Control.LayerSwitcher({'ascending': false}),

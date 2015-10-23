@@ -302,7 +302,6 @@ define([
     var NewMapComponent = UnmanagedComponent.extend(ColorMapMixin).extend({
       ph: undefined, //perhaps this is not needed
       mapEngine: undefined, // points to one instance of a MapEngine object
-      values: undefined,
       locationResolver: undefined, // addIn used to process location
       //shapeResolver: undefined, // addIn used to process location
       API_KEY: false, // API KEY for map services such as Google Maps
@@ -355,12 +354,14 @@ define([
         Logger.log('Starting clock of ' + this.htmlObject, 'debug');
         this.clock = (new Date());
 
-        if (this.queryDefinition && !_.isEmpty(this.queryDefinition)) {
-          this.getData();
-        } else {
-          // No datasource, we'll just display the map
-          this.onDataReady(this.testData || {});
-        }
+        this.init().then(_.bind(function(){
+          if (this.queryDefinition && !_.isEmpty(this.queryDefinition)) {
+            this.getData();
+          } else {
+            // No datasource, we'll just display the map
+            this.onDataReady(this.testData || {});
+          }
+        }, this));
       },
 
       maybeToggleBlock: function(block) {
@@ -405,7 +406,7 @@ define([
         }
       },
 
-      dataRequest: function (url, keys, json) {
+      resolveShapes: function (url, keys, json) {
         var addIn = this.getAddIn('ShapeResolver', this.shapeResolver);
         if (!addIn && this.shapeSource) {
           if (this.shapeSource.endsWith('json') || this.shapeSource.endsWith('js')) {
@@ -440,41 +441,41 @@ define([
           deferred.resolve(result);
         });
         return deferred.promise();
-
       },
 
-      render: function (values) {
-        //Logger.log('NewMapComponent.render: entered with arguments ' + JSON.stringify(arguments), 'debug')
-        Logger.log('Stopping clock at render in ' + this.htmlObject + ': took ' + (new Date() - this.clock) + ' ms', 'debug');
-
-        if (this.shapeDefinition) {
-          Logger.log('Loaded ' + _.keys(this.shapeDefinition).length + ' shapes', 'debug');
-        }
-
+      init: function () {
         if (this.mapEngineType == 'google') {
           this.mapEngine = new GoogleMapEngine();
         } else {
           this.mapEngine = new OpenLayersEngine();
         }
 
-        this.values = values;
+        // Do we really need to do an $.extend?
         $.extend(true, this.mapEngine, {
           API_KEY: this.API_KEY || window.API_KEY, //either local or global API_KEY
           tileServices: this.tileServices,
           tileServicesOptions: this.tileServicesOptions
         });
-        this.mapEngine.init(this, this.tilesets);
+        return this.mapEngine.init(this, this.tilesets).then(_.bind(function(){
+
+          this.ph = this.placeholder();
+          this.ph.empty(); //clear();
+
+          var $popupContentsDiv = $("#" + this.popupContentsDiv);
+          var $popupDivHolder = $popupContentsDiv.clone();
+          //after first render, the popupContentsDiv gets moved inside ph, it will be discarded above, make sure we re-add him
+          if (this.popupContentsDiv && $popupContentsDiv.length != 1) {
+            this.ph.append($popupDivHolder.html("None"));
+          }
+
+          this.mapEngine.renderMap(this.ph[0]);
+
+        },this));
       },
 
-      initCallBack: function () {
-
-        this.ph = this.placeholder();
-        var $popupContentsDiv = $("#" + this.popupContentsDiv);
-        var $popupDivHolder = $popupContentsDiv.clone();
-        this.ph.empty(); //clear();
-        //after first render, the popupContentsDiv gets moved inside ph, it will be discarded above, make sure we re-add him
-        if (this.popupContentsDiv && $popupContentsDiv.length != 1) {
-          this.ph.append($popupDivHolder.html("None"));
+      render: function (json) {
+        if (this.shapeDefinition) {
+          Logger.log('Loaded ' + _.size(this.shapeDefinition) + ' shapes', 'debug');
         }
 
         var centerLatitude = parseFloat(this.centerLatitude);
@@ -483,25 +484,24 @@ define([
         //centerLatitude = _.isFinite(centerLatitude) ? centerLatitude : 38.471;
         //centerLongitude = _.isFinite(centerLongitude) ? centerLongitude : -9.15;
 
-        this.mapEngine.renderMap(this.ph[0]);
-
         switch (this.mapMode) {
           case 'shapes':
-            this.setupShapes(this.values);
+            this.setupShapes(json);
             break;
           case 'markers':
-            this.setupMarkers(this.values);
+            this.setupMarkers(json);
             break;
         }
 
         this.mapEngine.updateViewport(centerLongitude, centerLatitude, this.defaultZoomLevel);
 
-        Logger.log('Stopping clock: update cycle of ' + this.htmlObject + ' took ' + (new Date() - this.clock) + ' ms', 'debug');
 
-        // google mapEngine implementation will still fetch data asynchronously before calling initCallBack
+        // google mapEngine implementation will still fetch data asynchronously before ca
         // so only here can we finish the lifecycle.
         this.postExec();
         this.maybeToggleBlock(false);
+
+        Logger.log('Stopping clock: update cycle of ' + this.htmlObject + ' took ' + (new Date() - this.clock) + ' ms', 'debug');
       },
 
       registerEvents: function () {

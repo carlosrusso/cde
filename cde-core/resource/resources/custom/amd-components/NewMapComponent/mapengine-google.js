@@ -46,7 +46,7 @@ define([
       this.tilesets = tilesets;
       this.mapComponent = mapComponent;
 
-      $.when(MapComponentAsyncLoader('3', this.API_KEY)).then(
+      return $.when(MapComponentAsyncLoader('3', this.API_KEY)).then(
         function (status) {
           OurMapOverlay.prototype = new google.maps.OverlayView();
           OurMapOverlay.prototype.onAdd = function () {
@@ -121,8 +121,6 @@ define([
             // this.div_.parentNode.removeChild(this.div_);
             // this.div_ = null;
           };
-
-          mapComponent.initCallBack();
 
         });
     },
