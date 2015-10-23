@@ -73,16 +73,17 @@
  */
 
 define([
-  'cdf/components/UnmanagedComponent',
-  'cdf/Logger',
-  'cdf/lib/jquery',
-  'amd!cdf/lib/underscore',
-  './Map/mapengine-google',
-  './Map/mapengine-openlayers',
-  './Map/model/SelectionTree',
-  './Map/addIns/mapAddins',
-  'css!./NewMapComponent'],
-       function(UnmanagedComponent, Logger, $, _, GoogleMapEngine, OpenLayersEngine, SelectionTree ) {
+    'cdf/components/UnmanagedComponent',
+    'cdf/Logger',
+    'cdf/lib/jquery',
+    'amd!cdf/lib/underscore',
+    './Map/mapengine-google',
+    './Map/mapengine-openlayers',
+    './Map/model/SelectionTree',
+    './Map/ControlPanel',
+    './Map/addIns/mapAddins',
+    'css!./NewMapComponent'],
+  function (UnmanagedComponent, Logger, $, _, GoogleMapEngine, OpenLayersEngine, SelectionTree, ControlPanel) {
 
 
     var ShapeConversion = {
@@ -342,7 +343,7 @@ define([
       // },
       // // End
       update: function () {
-        if(!this.preExec()) {
+        if (!this.preExec()) {
           return false;
         }
         this.maybeToggleBlock(true);
@@ -354,7 +355,7 @@ define([
         Logger.log('Starting clock of ' + this.htmlObject, 'debug');
         this.clock = (new Date());
 
-        this.init().then(_.bind(function(){
+        this.init().then(_.bind(function () {
           if (this.queryDefinition && !_.isEmpty(this.queryDefinition)) {
             this.getData();
           } else {
@@ -364,13 +365,13 @@ define([
         }, this));
       },
 
-      maybeToggleBlock: function(block) {
+      maybeToggleBlock: function (block) {
         if (!this.isSilent()) {
           block ? this.block() : this.unblock();
         }
       },
 
-      getData: function() {
+      getData: function () {
         var query = this.queryState = this.query = this.dashboard.getQuery(this.queryDefinition);
         query.setAjaxOptions({async: true});
         query.fetchData(
@@ -385,7 +386,7 @@ define([
           value: 1
         };
         this.model = new SelectionTree();
-        var data = _.map(json.resultset, function(row, rowIdx){
+        var data = _.map(json.resultset, function (row, rowIdx) {
           return {
             id: row[idx.id],
             label: row[0],
@@ -456,21 +457,47 @@ define([
           tileServices: this.tileServices,
           tileServicesOptions: this.tileServicesOptions
         });
-        return this.mapEngine.init(this, this.tilesets).then(_.bind(function(){
+        return this.mapEngine.init(this, this.tilesets).then(_.bind(function () {
 
           this.ph = this.placeholder();
           this.ph.empty(); //clear();
+          this.initControlPanel();
 
-          var $popupContentsDiv = $("#" + this.popupContentsDiv);
-          var $popupDivHolder = $popupContentsDiv.clone();
-          //after first render, the popupContentsDiv gets moved inside ph, it will be discarded above, make sure we re-add him
-          if (this.popupContentsDiv && $popupContentsDiv.length != 1) {
-            this.ph.append($popupDivHolder.html("None"));
-          }
+          this.initPopup();
 
+          //var $map = $('<div class="map-content" />').appendTo(this.ph);
           this.mapEngine.renderMap(this.ph[0]);
 
-        },this));
+
+        }, this));
+      },
+
+      initPopup: function () {
+        var $popupContentsDiv = $("#" + this.popupContentsDiv);
+        var $popupDivHolder = $popupContentsDiv.clone();
+        //after first render, the popupContentsDiv gets moved inside ph, it will be discarded above, make sure we re-add him
+        if (this.popupContentsDiv && $popupContentsDiv.length != 1) {
+          this.ph.append($popupDivHolder.html("None"));
+        }
+
+      },
+
+      initControlPanel: function () {
+        var $controlPanel = $('<div class="map-controls" />').appendTo(this.ph);
+        this.controlPanel = new ControlPanel($controlPanel);
+        this.controlPanel.render();
+        var eventMapping = {
+          'mode:pan': this.mapEngine.setPanningMode,
+          'mode:zoombox': this.mapEngine.setZoomBoxMode,
+          'mode:select': this.mapEngine.setSelectionMode
+        };
+        var me = this;
+        _.chain(eventMapping)
+          .filter(_.isFunction)
+          .each(function (callback, event) {
+            me.listenTo(me.controlPanel, event, _.bind(callback, me));
+          })
+          .value();
       },
 
       render: function (json) {
@@ -840,4 +867,4 @@ define([
 
     return NewMapComponent;
 
-});
+  });

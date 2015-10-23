@@ -39,3 +39,11 @@
 #featurePopup674f73 {
 	border: 3px solid #674f73 !important;
 }
+
+
+
+.map-controls {
+    position: relative;
+    height: 0;
+    z-index: 1013;
+}
