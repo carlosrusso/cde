@@ -79,9 +79,10 @@ define([
   'amd!cdf/lib/underscore',
   './GoogleMapEngine',
   './OpenLayersEngine',
+  './model/SelectionTree',
   './mapAddIns',
   'css!./NewMapComponent'],
-  function(UnmanagedComponent, Logger, $, _, GoogleMapEngine, OpenLayersEngine) {
+       function(UnmanagedComponent, Logger, $, _, GoogleMapEngine, OpenLayersEngine, SelectionTree ) {
 
 
     var ShapeConversion = {
@@ -382,11 +383,20 @@ define([
           id: 0,
           value: 1
         };
+        this.model = new SelectionTree();
+        var data = _.map(json.resultset, function(row, rowIdx){
+          return {
+            id: rowIdx,
+            label: row[0],
+            rawData: row
+          };
+        });
+        this.model.add(data);
 
         var me = this;
         if (this.mapMode == "shapes") {
           var keys = _.pluck(json.resultset, idx.id);
-          this.dataRequest(this.shapeSource, keys, json)
+          this.resolveShapes(this.shapeSource, keys, json)
             .then(function () {
               me.render.call(me, json);
             });
