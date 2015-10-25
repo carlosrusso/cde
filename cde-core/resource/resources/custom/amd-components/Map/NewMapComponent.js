@@ -77,8 +77,8 @@ define([
     'cdf/Logger',
     'cdf/lib/jquery',
     'amd!cdf/lib/underscore',
-    './Map/mapengine-google',
-    './Map/mapengine-openlayers',
+    './Map/engines/google/mapengine-google',
+    './Map/engines/openlayers2/mapengine-openlayers',
     './Map/model/SelectionTree',
     './Map/ControlPanel',
     './Map/addIns/mapAddins',
@@ -357,7 +357,7 @@ define([
 
         this.init().then(_.bind(function () {
           if (this.queryDefinition && !_.isEmpty(this.queryDefinition)) {
-            this.getData();
+            this.getQueryData();
           } else {
             // No datasource, we'll just display the map
             this.onDataReady(this.testData || {});
@@ -371,7 +371,7 @@ define([
         }
       },
 
-      getData: function () {
+      getQueryData: function () {
         var query = this.queryState = this.query = this.dashboard.getQuery(this.queryDefinition);
         query.setAjaxOptions({async: true});
         query.fetchData(
@@ -385,16 +385,8 @@ define([
           id: 0,
           value: 1
         };
-        this.model = new SelectionTree();
-        var data = _.map(json.resultset, function (row, rowIdx) {
-          return {
-            id: row[idx.id],
-            label: row[0],
-            rawData: row
-          };
-        });
-        this.model.add(data);
 
+        this.initModel(json);
         var me = this;
         if (this.mapMode == "shapes") {
           var keys = _.pluck(json.resultset, idx.id);
@@ -405,6 +397,37 @@ define([
         } else {
           this.render(json);
         }
+      },
+
+      initModel: function (json) {
+        this.model = new SelectionTree();
+        var series = _.map(json.resultset, function (row, rowIdx) {
+          return {
+            id: row[0],
+            label: row[0],
+            rowIdx: rowIdx,
+            rawData: row
+          };
+        });
+
+        var markers = {
+          id: 'markers',
+          label: 'Markers',
+          nodes: this.mapMode === 'markers' ? series : undefined
+        };
+        var shapes = {
+          id: 'shapes',
+          label: 'Shapes',
+          nodes: this.mapMode === 'shapes' ? series : undefined
+        };
+
+        if (this.mapMode === 'markers') {
+          this.model.add(markers);
+        }
+        if (this.mapMode === 'shapes') {
+          this.model.add(shapes);
+        }
+
       },
 
       resolveShapes: function (url, keys, json) {
@@ -445,10 +468,17 @@ define([
       },
 
       init: function () {
+        var options = {
+          API_KEY: this.API_KEY || window.API_KEY, //either local or global API_KEY
+          tileServices: this.tileServices,
+          tileServicesOptions: this.tileServicesOptions
+        };
+
+
         if (this.mapEngineType == 'google') {
-          this.mapEngine = new GoogleMapEngine();
+          this.mapEngine = new GoogleMapEngine(options);
         } else {
-          this.mapEngine = new OpenLayersEngine();
+          this.mapEngine = new OpenLayersEngine(options);
         }
 
         // Do we really need to do an $.extend?
@@ -513,7 +543,7 @@ define([
 
         switch (this.mapMode) {
           case 'shapes':
-            this.setupShapes(json);
+            this.renderShapes(json);
             break;
           case 'markers':
             this.setupMarkers(json);
@@ -597,7 +627,7 @@ define([
         });
       },
 
-      setupShapes: function (json) {
+      renderShapes: function (json) {
         if (!this.shapeDefinition) {
           return;
         }
@@ -636,15 +666,11 @@ define([
             maxValue: maxValue
           };
 
-          myself.renderShape(myself.shapeDefinition[row[idxKey]], _.defaults({
+          myself.mapEngine.setShape(myself.shapeDefinition[row[idxKey]], _.defaults({
             fillColor: fillColor
           }, shapeSettings), data);
         });
         this.mapEngine.postSetShapes(this);
-      },
-
-      renderShape: function (shapeDefinition, shapeSettings, data) {
-        this.mapEngine.setShape(shapeDefinition, shapeSettings, data);
       },
 
       setupMarkers: function (json) {

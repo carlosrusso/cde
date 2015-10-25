@@ -24,13 +24,11 @@ define([
      */
     defaults: {
       id: void 0,
-      label: "Label",
+      label: '',
       isSelected: false,
       isVisible: true,
-      isCollapsed: true,
       numberOfSelectedItems: 0,
-      numberOfItems: 0,
-      page: 0
+      numberOfItems: 0
     },
     constructor: function(attributes, options) {
       if ((attributes != null ? attributes.label : void 0) != null) {
