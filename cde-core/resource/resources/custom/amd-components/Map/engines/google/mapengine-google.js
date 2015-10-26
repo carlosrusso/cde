@@ -260,11 +260,11 @@ define([
       this.selectedFeature = [key, shapes, shapeStyle];
     },
 
-    setMarker: function (markerInfo, icon, description, data, markerWidth, markerHeight) {
+    setMarker: function (markerInfo, description, data) {
       var myLatLng = new google.maps.LatLng(markerInfo.latitude, markerInfo.longitude);
-      var image = new google.maps.MarkerImage(icon,
+      var image = new google.maps.MarkerImage(markerInfo.icon,
         // This marker is 20 pixels wide by 32 pixels tall.
-        new google.maps.Size(markerWidth, markerHeight),
+        new google.maps.Size(markerInfo.width, markerInfo.height),
         // The origin for this image is 0,0.
         new google.maps.Point(0, 0),
         // The anchor for this image is the base of the flagpole at 0,32.

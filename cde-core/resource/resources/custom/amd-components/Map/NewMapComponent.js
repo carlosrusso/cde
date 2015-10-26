@@ -569,17 +569,20 @@ define([
           description = row[mapping.description];
         }
 
-        Logger.log('About to render ' + location[0] + ' / ' + location[1] + ' with marker sized ' + markerHeight + ' / ' + markerWidth + 'and description ' + description, 'debug');
 
         var markerInfo = { // hack to pass marker information to the mapEngine. This information will be included in the events
           longitude: location[0],
           latitude: location[1],
           defaultMarkers: defaultMarkers,
           position: position,
-          mapping: mapping
+          mapping: mapping,
+          icon: markerIcon,
+          width: markerWidth,
+          height: markerHeight
         };
 
-        myself.mapEngine.setMarker(markerInfo, markerIcon, description, row, markerWidth, markerHeight );
+        Logger.log('About to render ' + markerInfo.longitude + ' / ' + markerInfo.latitude + ' with marker sized ' + markerHeight + ' / ' + markerWidth + 'and description ' + description, 'debug');
+        myself.mapEngine.setMarker(markerInfo, description, row);
       },
 
       markerClickCallback: function (event) {

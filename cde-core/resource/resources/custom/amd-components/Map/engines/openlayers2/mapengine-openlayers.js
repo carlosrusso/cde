@@ -137,7 +137,7 @@ define([
     },
 
 
-    setMarker: function (markerInfo, icon, description, data, markerWidth, markerHeight) {
+    setMarker: function (markerInfo, description, data) {
       var proj = new OpenLayers.Projection('EPSG:4326'),  // transform from WGS 1984 //4326
         mapProj = this.map.getProjectionObject();
       var point = new OpenLayers.LonLat(markerInfo.longitude, markerInfo.latitude).transform(
@@ -145,17 +145,38 @@ define([
         mapProj // to the map system
       );
 
+      var featureOptions;
+      if (!markerInfo.icon){
+        featureOptions = {
+          graphicName: 'circle',
+          label: 'label',
+          labelAlign: 'cm',
+          labelYOffset: -10,
+          fillColor: '#ff0000',
+          strokeColor: '#ffffff',
+          strokeWidth: 3,
+          pointRadius: 10,
+          fillOpacity: 0.9
+        }
+      } else {
+        featureOptions = {
+          graphicName: 'circle',
+          pointRadius: 100*Math.random(),
+          externalGraphic: markerInfo.icon,
+          graphicWidth: markerInfo.width,
+          graphicHeight: markerInfo.height
+        }
+      }
+      $.extend(featureOptions, {
+
+      });
+
       var marker = new OpenLayers.Geometry.Point(point.lon, point.lat);
       var feature = new OpenLayers.Feature.Vector(marker, {
         data: data,
         style: undefined,
         marker: markerInfo
-      }, {
-        externalGraphic: icon,
-        graphicWidth: markerWidth,
-        graphicHeight: markerHeight,
-        fillOpacity: 1
-      });
+      }, featureOptions);
 
       this.markers.addFeatures([feature]);
 
