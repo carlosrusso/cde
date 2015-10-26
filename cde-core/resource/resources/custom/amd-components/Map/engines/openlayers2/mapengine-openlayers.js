@@ -138,21 +138,17 @@ define([
 
 
     setMarker: function (lon, lat, icon, description, data, markerWidth, markerHeight, markerInfo) {
-      var size = new OpenLayers.Size(markerWidth, markerHeight);
-      var offset = new OpenLayers.Pixel(-(size.w / 2), -size.h);
-      var iconObj = new OpenLayers.Icon(icon, size, offset);
-
       var proj = new OpenLayers.Projection('EPSG:4326'),  // transform from WGS 1984 //4326
         mapProj = this.map.getProjectionObject();
       var point = new OpenLayers.LonLat(lon, lat).transform(
         proj, // transform from WGS 1984
         mapProj // to the map system
       );
+
       var marker = new OpenLayers.Geometry.Point(point.lon, point.lat);
-      var style;
       var feature = new OpenLayers.Feature.Vector(marker, {
         data: data,
-        style: style,
+        style: undefined,
         marker: markerInfo
       }, {
         externalGraphic: icon,
