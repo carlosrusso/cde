@@ -80,224 +80,23 @@ define([
     './Map/engines/google/mapengine-google',
     './Map/engines/openlayers2/mapengine-openlayers',
     './Map/model/SelectionTree',
-    './Map/ControlPanel',
+    './Map/ControlPanel/ControlPanel',
+    './Map/ShapeConversion',
+    './Map/tileServices',
+    './Map/ColorMapMixin',
     './Map/addIns/mapAddins',
     'css!./NewMapComponent'],
-  function (UnmanagedComponent, Logger, $, _, GoogleMapEngine, OpenLayersEngine, SelectionTree, ControlPanel) {
+  function (UnmanagedComponent, Logger, $, _,
+            GoogleMapEngine, OpenLayersEngine,
+            SelectionTree, ControlPanel, ShapeConversion, _tileServices, ColorMapMixin) {
 
 
-    var ShapeConversion = {
-
-      simplifyPoints: function (points, precision_m) {
-        if (precision_m < 0) {
-          return points;
-        }
-        function properRDP(points, epsilon) {
-          /*
-           *** Ramer Douglas Peucker, from http://karthaus.nl/rdp/js/rdp.js
-
-           The Ramer-Douglas–Peucker algorithm is an algorithm for reducing the number of points in a curve that is approximated by a series of points.
-           It does so by "thinking" of a line between the first and last point in a set of points that form the curve.
-           It checks which point in between is farthest away from this line.
-           If the point (and as follows, all other in-between points) is closer than a given distance 'epsilon', it removes all these in-between points.
-           If on the other hand this 'outlier point' is farther away from our imaginary line than epsilon, the curve is split in two parts.
-           The function is recursively called on both resulting curves, and the two reduced forms of the curve are put back together.
-
-           1) From the first point up to and including the outlier
-           2) The outlier and the remaining points.
 
 
-           *** Bad implementations on the web
-           On the web I found many Ramer Douglas Peucker implementations, but most of the top results on google contained bugs.
-           Even the original example on Wikipedia was BAD!
-           The bugs were ranging from bad calculation of the perpendicular distance of a point to a line (often they contained a devide by zero error for vertical lines),
-           to discarding points that should not be removed at all.
-           To see this in action, just try running the algorithm on it's own result with the same epsilon,
-           many implementations will keep on reducing more and more points until there is no spline left.
-           A correct implementation of RDP will remove *all* points that it can remove given a certain epsilon in the first run.
-
-           I hope that by looking at this source code for my Ramer Douglas Peucker implementation you will be able to get a correct reduction of your dataset.
-
-           @licence Feel free to use it as you please, a mention of my name is always nice.
-
-           Marius Karthaus
-           http://www.LowVoice.nl
-
-           *
-           */
-          var firstPoint = points[0];
-          var lastPoint = points[points.length - 1];
-          if (points.length < 3) {
-            return points;
-          }
-          var index = -1;
-          var dist = 0;
-          for (var i = 1; i < points.length - 1; i++) {
-            var cDist = findPerpendicularDistance(points[i], firstPoint, lastPoint);
-            if (cDist > dist) {
-              dist = cDist;
-              index = i;
-            }
-          }
-          if (dist > epsilon) {
-            // iterate
-            var l1 = points.slice(0, index + 1);
-            var l2 = points.slice(index);
-            var r1 = properRDP(l1, epsilon);
-            var r2 = properRDP(l2, epsilon);
-            // concat r2 to r1 minus the end/startpoint that will be the same
-            var rs = r1.slice(0, r1.length - 1).concat(r2);
-            return rs;
-          } else {
-            return [firstPoint, lastPoint];
-          }
-        }
-
-        function findPerpendicularDistance(p, p1, p2) {
-          // if start and end point are on the same x the distance is the difference in X.
-          var result;
-          var slope;
-          var intercept;
-          if (p1[0] == p2[0]) {
-            result = Math.abs(p[0] - p1[0]);
-          } else {
-            slope = (p2[1] - p1[1]) / (p2[0] - p1[0]);
-            intercept = p1[1] - (slope * p1[0]);
-            result = Math.abs(slope * p[0] - p[1] + intercept) / Math.sqrt(Math.pow(slope, 2) + 1);
-          }
-
-          return result;
-        }
-
-        return properRDP(points, precision_m / 6.3e6);
-
-      }, // reducePoints
-
-      exportShapeDefinition: function () {
-        if (this.shapeDefinition) {
-          window.open("data:text/json;charset=utf-8," + escape(JSON.stringify(this.shapeDefinition)));
-        }
-      }
-
-    };
 
 
-    var ColorMapMixin = {
-      /** Mixin for handling color maps
-       This should probably be elevated to a proper class with a nice database of colormaps
-       */
-      colormaps: {
-        'jet': [],
-        'gray': [[0, 0, 0, 255], [255, 255, 255, 255]],
-        'french-flag': [[255, 0, 0, 255], [255, 254, 255, 255], [0, 0, 255, 255]]
-      },
-      getColorMap: function () {
 
-        var colorMap = [];
-        if (this.colormap == null || (_.isArray(this.colormap) && !this.colormap.length)) {
-          colorMap = [[0, 102, 0, 255], [255, 255, 0, 255], [255, 0, 0, 255]]; //RGBA
-        } else {
-          for (var k = 0, L = this.colormap.length; k < L; k++) {
-            colorMap.push(JSON.parse(this.colormap[k]));
-          }
-        }
 
-        var interpolate = function (a, b, n) {
-          var c = [], d = [];
-          var k, kk, step;
-          for (k = 0; k < a.length; k++) {
-            c[k] = [];
-            for (kk = 0, step = (b[k] - a[k]) / n; kk < n; kk++) {
-              c[k][kk] = a[k] + kk * step;
-            }
-          }
-          for (k = 0; k < c[0].length; k++) {
-            d[k] = [];
-            for (kk = 0; kk < c.length; kk++) {
-              d[k][kk] = Math.round(c[kk][k]);
-            }
-          }
-          return d;
-        };
-        var cmap = [];
-        for (k = 1, L = colorMap.length; k < L; k++) {
-          cmap = cmap.concat(interpolate(colorMap[k - 1], colorMap[k], 32));
-        }
-        return _.map(cmap, function (v) {
-          return 'rgba(' + v.join(',') + ')';
-        });
-      },
-      mapColor: function (value, minValue, maxValue, colormap) {
-        var n = colormap.length;
-        var level = (value - minValue) / (maxValue - minValue);
-        return colormap[Math.floor(level * (n - 1))];
-      }
-    };
-
-    /**
-     * TileServices (servers providing png images representing the map)
-     OpenStreetMaps default tiles are ugly, I found many nicer tilesets that work in both map engines (google/openlayers)
-     To compare the various tilesets, visit http://mc.bbbike.org/mc/?num=2
-
-     Example of valid values for the CDE property "tilesets"
-     'mapquest'
-     ['mapquest']
-     ['mapquest', 'apple']
-     'custom/static/localMapService/${z}/${x}/${y}.png'
-     "http://otile1.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png"
-     "http://otile{switch:1,2,3,4}.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png"
-     */
-
-    var _tileServices = {
-      // list of tileset services that were tested and are working at 2013-11-04, see http://mc.bbbike.org/mc/?num=2 for comparison
-      'default': "http://otile{switch:1,2,3,4}.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png", //MapQuest tile server
-      'apple': "http://gsp2.apple.com/tile?api=1&style=slideshow&layers=default&lang=en_US&z=${z}&x=${x}&y=${y}&v=9",
-      'google': "http://mt{switch:0,1,2,3}.googleapis.com/vt?x=${x}&y=${y}&z=${z}",
-      'mapquest': "http://otile{switch:1,2,3,4}.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png", //MapQuest tile server
-      'mapquest-normal': "http://otile{switch:1,2,3,4}.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png", //MapQuest tile server
-      'mapquest-hybrid': "http://otile{switch:1,2,3,4}.mqcdn.com/tiles/1.0.0/hyb/${z}/${x}/${y}.png", //MapQuest tile server
-      'mapquest-sat': "http://otile{switch:1,2,3,4}.mqcdn.com/tiles/1.0.0/sat/${z}/${x}/${y}.jpg", //MapQuest tile server
-      'mapbox-world-light': "https://{switch:a,b,c,d}.tiles.mapbox.com/v3/mapbox.world-light/${z}/${x}/${y}.jpg",
-      'mapbox-world-dark': "https://{switch:a,b,c,d}.tiles.mapbox.com/v3/mapbox.world-dark/${z}/${x}/${y}.jpg",
-      'mapbox-terrain': 'https://{switch:a,b,c,d}.tiles.mapbox.com/v3/examples.map-9ijuk24y/${z}/${x}/${y}.jpg',
-      'mapbox-satellite': 'https://{switch:a,b,c,d}.tiles.mapbox.com/v3/examples.map-qfyrx5r8/${z}/${x}/${y}.png',
-      'mapbox-example': 'https://{switch:a,b,c,d}.tiles.mapbox.com/v3/examples.c7d2024a/${z}/${x}/${y}.png',
-      'mapbox-example2': 'https://{switch:a,b,c,d}.tiles.mapbox.com/v3/examples.bc17bb2a/${z}/${x}/${y}.png',
-      'openstreetmaps': "http://{switch:a,b,c}.tile.openstreetmap.org/${z}/${x}/${y}.png", //OSM tile server
-      'openmapsurfer': 'http://129.206.74.245:8001/tms_r.ashx?x=${x}&y=${y}&z=${z}',
-      'openmapsurfer-roads': 'http://129.206.74.245:8001/tms_r.ashx?x=${x}&y=${y}&z=${z}',
-      'openmapsurfer-semitransparent': 'http://129.206.74.245:8003/tms_h.ashx?x=${x}&y=${y}&z=${z}',
-      'openmapsurfer-hillshade': 'http://129.206.74.245:8004/tms_hs.ashx?x=${x}&y=${y}&z=${z}',
-      'openmapsurfer-contour': 'http://129.206.74.245:8006/tms_b.ashx?x=${x}&y=${y}&z=${z}',
-      'openmapsurfer-administrative': 'http://129.206.74.245:8007/tms_b.ashx?x=${x}&y=${y}&z=${z}',
-      'openmapsurfer-roads-grayscale': 'http://129.206.74.245:8008/tms_rg.ashx?x=${x}&y=${y}&z=${z}',
-      // 'map.eu': "http://alpha.map1.eu/tiles/${z}/${y}/${x}.jpg",
-      //'naturalearth': "http://www.staremapy.cz/naturalearth/${z}/${x}/${y}.png",
-      'stamen': "http://{switch:a,b,c,d}.tile.stamen.com/terrain/${z}/${x}/${y}.jpg",
-      'stamen-terrain': "http://{switch:a,b,c,d}.tile.stamen.com/terrain/${z}/${x}/${y}.jpg",
-      'stamen-terrain-background': "http://{switch:a,b,c,d}.tile.stamen.com/terrain-background/${z}/${x}/${y}.jpg",
-      'stamen-terrain-labels': "http://{switch:a,b,c,d}.tile.stamen.com/terrain-labels/${z}/${x}/${y}.jpg",
-      'stamen-toner': "http://{switch:a,b,c,d}.tile.stamen.com/toner/${z}/${x}/${y}.png",
-      'stamen-toner-lite': "http://{switch:a,b,c,d}.tile.stamen.com/toner-lite/${z}/${x}/${y}.png",
-      'stamen-toner-background': "http://{switch:a,b,c,d}.tile.stamen.com/toner-background/${z}/${x}/${y}.png",
-      'stamen-toner-hybrid': "http://{switch:a,b,c,d}.tile.stamen.com/toner-hybrid/${z}/${x}/${y}.png",
-      'stamen-toner-labels': "http://{switch:a,b,c,d}.tile.stamen.com/toner-labels/${z}/${x}/${y}.png",
-      'stamen-toner-lines': "http://{switch:a,b,c,d}.tile.stamen.com/toner-lines/${z}/${x}/${y}.png",
-      'stamen-toner-2010': "http://{switch:a,b,c,d}.tile.stamen.com/toner-2010/${z}/${x}/${y}.png",
-      'stamen-toner-2011': "http://{switch:a,b,c,d}.tile.stamen.com/toner-2011/${z}/${x}/${y}.png",
-      'stamen-watercolor': "http://{switch:a,b,c,d}.tile.stamen.com/watercolor/${z}/${x}/${y}.jpg",
-      'nokia-normal': 'http://maptile.maps.svc.ovi.com/maptiler/maptile/newest/normal.day/${z}/${x}/${y}/256/png8',
-      'nokia-normal-grey': 'http://maptile.maps.svc.ovi.com/maptiler/maptile/newest/normal.day.grey/${z}/${x}/${y}/256/png8',
-      'nokia-normal-transit': 'http://maptile.maps.svc.ovi.com/maptiler/maptile/newest/normal.day.transit/${z}/${x}/${y}/256/png8',
-      'nokia-satellite': 'http://maptile.maps.svc.ovi.com/maptiler/maptile/newest/satellite.day/${z}/${x}/${y}/256/png8',
-      'nokia-terrain': 'http://maptile.maps.svc.ovi.com/maptiler/maptile/newest/terrain.day/${z}/${x}/${y}/256/png8',
-      'arcgis-street': 'http://services.arcgisonline.com/ArcGIS/rest/services/World_street_Map/MapServer/tile/${z}/${y}/${x}',
-      'arcgis-topographic': 'http://services.arcgisonline.com/ArcGIS/rest/services/World_street_Topo/MapServer/tile/${z}/${y}/${x}',
-      'arcgis-natgeo': 'http://services.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/${z}/${y}/${x}',
-      'arcgis-world': 'http://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}',
-      'arcgis-lightgray': 'http://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/${z}/${y}/${x}',
-      'arcgis-delorme': 'http://services.arcgisonline.com/ArcGIS/rest/services/Specialty/DeLorme_World_Base_Map/MapServer/tile/${z}/${y}/${x}'
-    };
 
 
     var NewMapComponent = UnmanagedComponent.extend(ColorMapMixin).extend({
@@ -487,7 +286,7 @@ define([
           tileServices: this.tileServices,
           tileServicesOptions: this.tileServicesOptions
         });
-        return this.mapEngine.init(this, this.tilesets).then(_.bind(function () {
+        return this.mapEngine.init(this.tilesets).then(_.bind(function () {
 
           this.ph = this.placeholder();
           this.ph.empty(); //clear();
@@ -496,10 +295,28 @@ define([
           this.initPopup();
 
           //var $map = $('<div class="map-content" />').appendTo(this.ph);
+
+          this._relayEvents();
           this.mapEngine.renderMap(this.ph[0]);
 
 
         }, this));
+      },
+
+      _relayEvents: function(){
+        var engine = this.mapEngine;
+        var component = this;
+        var events = [
+          'marker:click', 'marker:mouseover',  'marker:mouseout',
+          'shape:click',  'shape:mouseover',   'shape:mouseout'
+        ];
+        _.each(events, function(event){
+          component.listenTo(engine, event, function(){
+            var args = _.union([event], arguments);
+            component.trigger.apply(component, args);
+          });
+        });
+
       },
 
       initPopup: function () {

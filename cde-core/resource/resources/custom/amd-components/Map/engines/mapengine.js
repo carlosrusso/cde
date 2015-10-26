@@ -12,13 +12,13 @@
  */
 
 define([
-  'cdf/lib/Base',
+  '../model/baseevents/baseevents',
   'cdf/Logger',
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore'],
-  function(Base, Logger, $, _) {
+  function(BaseEvents, Logger, $, _) {
 
-  var MapEngine = Base.extend({  //Replace with BaseEvents ?
+  var MapEngine = BaseEvents.extend({
     tileServices: undefined,
     tileServicesOptions: undefined,
     tileLayer: function(name) {},

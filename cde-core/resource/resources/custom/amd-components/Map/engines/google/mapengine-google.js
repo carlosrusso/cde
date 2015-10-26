@@ -14,8 +14,8 @@
 define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
-  './MapEngine',
-  './MapComponentAsyncLoader'
+  '../mapengine',
+  '../MapComponentAsyncLoader'
 ], function ($, _, MapEngine, MapComponentAsyncLoader) {
 
   function OurMapOverlay(startPoint, width, height, htmlContent, popupContentDiv, map, borderColor) {
@@ -42,10 +42,8 @@ define([
     overlays: [],
     API_KEY: false,
     selectedFeature: undefined,
-    init: function (mapComponent, tilesets) {
+    init: function (tilesets) {
       this.tilesets = tilesets;
-      this.mapComponent = mapComponent;
-
       return $.when(MapComponentAsyncLoader('3', this.API_KEY)).then(
         function (status) {
           OurMapOverlay.prototype = new google.maps.OverlayView();
@@ -237,7 +235,7 @@ define([
 
       function addEventToFeature(eventName, event, feature, shapeStyle, data) {
         _.each(feature, function (f) {
-          myself.mapComponent.trigger(eventName, myself.wrapEvent(event, f, 'shape', shapeStyle, data));
+          myself.trigger(eventName, myself.wrapEvent(event, f, 'shape', shapeStyle, data));
         });
       }
 
@@ -283,7 +281,7 @@ define([
 
       var myself = this;
       google.maps.event.addListener(marker, 'click', function (e) {
-        myself.mapComponent.trigger('marker:click', myself.wrapEvent(e, marker, 'marker', markerInfo, data));
+        myself.trigger('marker:click', myself.wrapEvent(e, marker, 'marker', markerInfo, data));
       });
 
     },
@@ -404,7 +402,7 @@ define([
     _.each(eventMap, function (mapEvent, engineEvent) {
       google.maps.event.addListener(me.map, engineEvent, function () {
         var wrappedEvent = wrapViewportEvent.call(me);
-        me.mapComponent.trigger.call(me.mapComponent, mapEvent, wrappedEvent);
+        me.trigger(mapEvent, wrappedEvent);
       });
     });
 

@@ -1,7 +1,7 @@
 define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
-  './model/baseevents/baseeventsModel',
+  '../model/baseevents/baseeventsModel',
   'cdf/lib/mustache',
   'text!./ControlPanel.html',
   'css!./ControlPanel'

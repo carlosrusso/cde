@@ -16,8 +16,8 @@
  *
  */
 define([
-  './MapEngine',
-  './MapComponentAsyncLoader',
+  '../mapengine',
+  '../MapComponentAsyncLoader',
   'cdf/Logger',
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
@@ -31,9 +31,8 @@ define([
     shapes: undefined,
     //    featureLayer: undefined,
     API_KEY: 0,
-    init: function (mapComponent, tilesets) {
+    init: function (tilesets) {
       this.tilesets = tilesets;
-      this.mapComponent = mapComponent; // the callbacks will use this
       Logger.log('Requested tilesets:' + JSON.stringify(tilesets), 'debug');
 
       var contains = function (v) {
@@ -341,7 +340,7 @@ define([
           'featureselected': 'click'
         };
         if (events[e.type]) {
-          myself.mapComponent.trigger(prefix + ':' + events[e.type], myself.wrapEvent(e));
+          myself.trigger(prefix + ':' + events[e.type], myself.wrapEvent(e));
         }
       }
 
@@ -410,13 +409,13 @@ define([
 
       this.markers.events.on({
         featurehighlighted: function (e) {
-          myself.mapComponent.trigger('marker:mouseover', myself.wrapEvent(e));
+          myself.trigger('marker:mouseover', myself.wrapEvent(e));
         },
         featureunhighlighted: function (e) {
-          myself.mapComponent.trigger('marker:mouseout', myself.wrapEvent(e));
+          myself.trigger('marker:mouseout', myself.wrapEvent(e));
         },
         featureselected: function (e) {
-          myself.mapComponent.trigger('marker:click', myself.wrapEvent(e));
+          myself.trigger('marker:click', myself.wrapEvent(e));
           // The feature remains selected after we close the popup box, which disables clicking on the same box.
           // Thus we enforce that no marker is selected.
           clickCtrl.unselectAll();
@@ -425,7 +424,7 @@ define([
 
       this.shapes.events.on({
         featureselected: function (e) {
-          myself.mapComponent.trigger('shape:click', myself.wrapEvent(e));
+          myself.trigger('shape:click', myself.wrapEvent(e));
         }
       });
 
@@ -452,7 +451,7 @@ define([
     _.each(eventMap, function (mapEvent, engineEvent) {
       me.map.events.register(engineEvent, me.map, function (e) {
         var wrappedEvent = wrapViewportEvent.call(me, e);
-        me.mapComponent.trigger.call(me.mapComponent, mapEvent, wrappedEvent);
+        me.trigger(mapEvent, wrappedEvent);
       });
     });
     function wrapViewportEvent(e) {
