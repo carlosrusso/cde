@@ -260,8 +260,8 @@ define([
       this.selectedFeature = [key, shapes, shapeStyle];
     },
 
-    setMarker: function (lon, lat, icon, description, data, markerWidth, markerHeight, markerInfo) {
-      var myLatLng = new google.maps.LatLng(lat, lon);
+    setMarker: function (markerInfo, icon, description, data, markerWidth, markerHeight) {
+      var myLatLng = new google.maps.LatLng(markerInfo.latitude, markerInfo.longitude);
       var image = new google.maps.MarkerImage(icon,
         // This marker is 20 pixels wide by 32 pixels tall.
         new google.maps.Size(markerWidth, markerHeight),

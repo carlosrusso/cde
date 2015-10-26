@@ -137,10 +137,10 @@ define([
     },
 
 
-    setMarker: function (lon, lat, icon, description, data, markerWidth, markerHeight, markerInfo) {
+    setMarker: function (markerInfo, icon, description, data, markerWidth, markerHeight) {
       var proj = new OpenLayers.Projection('EPSG:4326'),  // transform from WGS 1984 //4326
         mapProj = this.map.getProjectionObject();
-      var point = new OpenLayers.LonLat(lon, lat).transform(
+      var point = new OpenLayers.LonLat(markerInfo.longitude, markerInfo.latitude).transform(
         proj, // transform from WGS 1984
         mapProj // to the map system
       );

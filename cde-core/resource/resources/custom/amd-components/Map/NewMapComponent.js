@@ -579,7 +579,7 @@ define([
           mapping: mapping
         };
 
-        myself.mapEngine.setMarker(location[0], location[1], markerIcon, description, row, markerWidth, markerHeight, markerInfo);
+        myself.mapEngine.setMarker(markerInfo, markerIcon, description, row, markerWidth, markerHeight );
       },
 
       markerClickCallback: function (event) {
