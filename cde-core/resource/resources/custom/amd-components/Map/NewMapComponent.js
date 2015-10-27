@@ -330,13 +330,16 @@ define([
       },
 
       initControlPanel: function () {
+
+        var me = this;
+
         var $controlPanel = $('<div class="map-controls" />').appendTo(this.ph);
         this.controlPanel = new ControlPanel($controlPanel);
         this.controlPanel.render();
         var eventMapping = {
           'change:mode': function(model, value){
               var modes = {
-                'selection': this.setSelectionMode,
+                'selection': me.mapEngine.setSelectionMode,
                 'zoombox': this.setZoomBoxMode,
                 'pan': this.setPanningMode
               };
@@ -346,7 +349,6 @@ define([
           'zoom:out': _.noop
         };
 
-        var me = this;
         _.chain(eventMapping)
           .each(function (callback, event) {
             if (_.isFunction(callback)){

@@ -66,7 +66,7 @@ define([
           style: this.toNativeStyle(shapeStyle)
         },
         data: {
-          //data: data,
+          data: data,
           //style: shapeStyle
         },
         //style: this.toNativeStyle(shapeStyle)
@@ -326,8 +326,13 @@ define([
         fillColor: 'red'
       });
 
+      var olSelect = new OpenLayers.Style({
+        fillColor: 'blue'
+      });
+
       var olStyleMap = new OpenLayers.StyleMap({
         'default': olStyle,
+        'select': olSelect,
         'temporary': olOver
       });
 
