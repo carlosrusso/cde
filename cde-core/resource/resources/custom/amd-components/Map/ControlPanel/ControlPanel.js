@@ -33,7 +33,6 @@ define([
       return this;
     },
 
-
     zoomOut: function () {
       console.log('zoom out');
       this.trigger('zoom:out');

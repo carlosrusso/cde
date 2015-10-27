@@ -345,8 +345,8 @@ define([
               };
               modes[value] && modes[value].call(this);
           },
-          'zoom:in': _.noop,
-          'zoom:out': _.noop
+          'zoom:in': me.mapEngine.zoomIn,
+          'zoom:out': me.mapEngine.zoomOut
         };
 
         _.chain(eventMapping)

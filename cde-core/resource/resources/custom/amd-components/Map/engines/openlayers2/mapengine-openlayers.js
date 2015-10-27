@@ -233,7 +233,7 @@ define([
           new OpenLayers.Control.Navigation(),
           // new OpenLayers.Control.NavToolbar(),
           // new OpenLayers.Control.PanZoom(),
-           new OpenLayers.Control.ZoomPanel(),
+          //new OpenLayers.Control.ZoomPanel(),
           new OpenLayers.Control.DragPan(),
           new OpenLayers.Control.PinchZoom(),
           new OpenLayers.Control.LayerSwitcher({'ascending': false}),
@@ -360,6 +360,10 @@ define([
       });
       this.map.addControl(this.boxSelector);
 
+      // add zomm box controler
+      this.zoomBox = new OpenLayers.Control.ZoomBox();
+      this.map.addControl(this.zoomBox);
+
 
       this._geoJSONParser = new OpenLayers.Format.GeoJSON({
         ignoreExtraDims: true,
@@ -371,16 +375,29 @@ define([
     setPanningMode: function() {
       console.log('Panning mode enable');
       this.boxSelector.deactivate();
+      this.zoomBox.deactivate();
     },
 
     setZoomBoxMode: function() {
       console.log('Zoom mode enable');
       this.boxSelector.deactivate();
+      this.zoomBox.activate();
     },
 
     setSelectionMode: function() {
       console.log('Selection mode enable');
+      this.zoomBox.deactivate();
       this.boxSelector.activate();
+    },
+
+    zoomIn: function() {
+      console.log('zoomIn');
+      this.map.zoomIn();
+    },
+
+    zoomOut: function() {
+      console.log('zoomIn');
+      this.map.zoomOut();
     },
 
     updateViewport: function (centerLongitude, centerLatitude, zoomLevel) {
