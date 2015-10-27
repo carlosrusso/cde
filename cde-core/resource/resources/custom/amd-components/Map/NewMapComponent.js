@@ -334,15 +334,24 @@ define([
         this.controlPanel = new ControlPanel($controlPanel);
         this.controlPanel.render();
         var eventMapping = {
-          'mode:pan': this.mapEngine.setPanningMode,
-          'mode:zoombox': this.mapEngine.setZoomBoxMode,
-          'mode:select': this.mapEngine.setSelectionMode
+          'change:mode': function(model, value){
+              var modes = {
+                'selection': this.setSelectionMode,
+                'zoombox': this.setZoomBoxMode,
+                'pan': this.setPanningMode
+              };
+              modes[value] && modes[value].call(this);
+          },
+          'zoom:in': _.noop,
+          'zoom:out': _.noop
         };
+
         var me = this;
         _.chain(eventMapping)
-          .filter(_.isFunction)
           .each(function (callback, event) {
-            me.listenTo(me.controlPanel, event, _.bind(callback, me));
+            if (_.isFunction(callback)){
+              me.listenTo(me.controlPanel, event, _.bind(callback, me.mapEngine));
+            }
           })
           .value();
       },
@@ -358,6 +367,7 @@ define([
         //centerLatitude = _.isFinite(centerLatitude) ? centerLatitude : 38.471;
         //centerLongitude = _.isFinite(centerLongitude) ? centerLongitude : -9.15;
 
+        this.mapEngine.model = this.model;
         switch (this.mapMode) {
           case 'shapes':
             this.renderShapes(json);
@@ -402,7 +412,7 @@ define([
         //   Logger.log('Marker mouseout');
         // });
 
-        this.on('shape:mouseover', function (event) {
+        this.on('xshape:mouseover', function (event) {
           // Logger.log('Shape mouseover');
           //this.mapEngine.showPopup(event.data,  event.feature, 50, 20, "Hello", undefined, 'red'); //Poor man's popup, only seems to work with OpenLayers
           if (_.isFunction(me.shapeMouseOver)) {
@@ -414,7 +424,7 @@ define([
           }
         });
 
-        this.on('shape:mouseout', function (event) {
+        this.on('xshape:mouseout', function (event) {
           //Logger.log('Shape mouseout');
           var result = {};
           if (_.isFunction(me.shapeMouseOut)) {
@@ -431,7 +441,7 @@ define([
 
         });
 
-        this.on('shape:click', function (event) {
+        this.on('xshape:click', function (event) {
           if (_.isFunction(me.shapeMouseClick)) {
             var result = me.shapeMouseClick(event);
             if (result) {

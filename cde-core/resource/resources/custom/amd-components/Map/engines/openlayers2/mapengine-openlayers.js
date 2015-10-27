@@ -61,14 +61,15 @@ define([
       var feature = this._geoJSONParser.parseFeature(multiPolygon);
       $.extend(true, feature, {
         attributes: {
-          data: data,
-          style: shapeStyle
+          //data: data,
+          //style: shapeStyle
+          style: this.toNativeStyle(shapeStyle)
         },
         data: {
-          data: data,
-          style: shapeStyle
+          //data: data,
+          //style: shapeStyle
         },
-        style: this.toNativeStyle(shapeStyle)
+        //style: this.toNativeStyle(shapeStyle)
       });
       this.shapes.addFeatures([feature]);
     },
@@ -279,25 +280,80 @@ define([
         this.map.addLayer(layer);
       }
 
+      // this.shapes.style = new OpenLayers.StyleMap({
+      //   'default': {
+      //     fillColor: '#aaaaaa',
+      //     graphicZIndex: 0
+      //   },
+      //   'select': {
+      //     fillColor: '#0000ff',
+      //     graphicZIndex: 1
+      //   }
+      // });
+
+      var style = OpenLayers.Util.extend( {}, OpenLayers.Feature.Vector.style[ 'default' ] );
+
+      style.fillColor = '${fillColor}';
+      style.fillOpacity = '${fillOpacity}';
+      style.strokeWidth = '${strokeWidth}';
+      style.graphicZIndex = '${graphicZIndex}';
+      style.strokeColor = '${strokeColor}';
+
+      var olStyle = new OpenLayers.Style( style, {
+        context: {
+          fillColor: function( feature ) {
+            if( feature.hasOwnProperty( 'attributes' ) ) {
+              if( feature.attributes.hasOwnProperty( 'style' ) ) {
+                if( feature.attributes.style.hasOwnProperty( 'fillColor' ) ) {
+                  return feature.attributes.style.fillColor;
+                }
+              }
+            }
+
+            // Default color
+            return '#999999';
+          },
+
+          strokeColor: function ( feature ) {
+
+            return 'black';
+
+          }
+        }  
+      });
+
+      var olOver = new OpenLayers.Style({
+        fillColor: 'red'
+      });
+
+      var olStyleMap = new OpenLayers.StyleMap({
+        'default': olStyle,
+        'temporary': olOver
+      });
+
+
       // add layers for the markers and for the shapes
       this.shapes = new OpenLayers.Layer.Vector('Shapes', {
+        styleMap: olStyleMap,  
         rendererOptions: {
           zIndexing: true
         }
       });
 
-      this.shapes.styleMap = new OpenLayers.StyleMap({
-        'default': {
-          graphicZIndex: 0
-        },
-        'select': {
-          graphicZIndex: 1
-        }
-      });
       this.markers = new OpenLayers.Layer.Vector('Markers');
 
       this.map.addLayers([this.shapes, this.markers]);
       this.setCallbacks();
+
+      // add box selector controler
+      this.boxSelector = new OpenLayers.Control.SelectFeature(this.shapes, {
+        clickout: true,
+        toggle: true,
+        multiple: true,
+        hover: false,
+        box: true
+      });
+      this.map.addControl(this.boxSelector);
 
 
       this._geoJSONParser = new OpenLayers.Format.GeoJSON({
@@ -305,6 +361,21 @@ define([
         internalProjection: this.map.getProjectionObject(),
         externalProjection: projectionWGS84
       });
+    },
+
+    setPanningMode: function() {
+      console.log('Panning mode enable');
+      this.boxSelector.deactivate();
+    },
+
+    setZoomBoxMode: function() {
+      console.log('Zoom mode enable');
+      this.boxSelector.deactivate();
+    },
+
+    setSelectionMode: function() {
+      console.log('Selection mode enable');
+      this.boxSelector.activate();
     },
 
     updateViewport: function (centerLongitude, centerLatitude, zoomLevel) {
@@ -441,7 +512,28 @@ define([
 
       this.shapes.events.on({
         featureselected: function (e) {
-          myself.trigger('shape:click', myself.wrapEvent(e));
+
+          // getAttrib
+          // setFeatAtt
+          // redraw
+          console.log(e.feature.data.data.key);
+
+          var id =  e.feature.data.data.key;
+          myself.model.where({id: id})[0].setSelection(true);
+
+          //myself.trigger('shape:click', myself.wrapEvent(e));
+        },
+        featureunselected: function (e) {
+          console.log(e.feature.data.data.key);
+
+          var id =  e.feature.data.data.key;
+          myself.model.where({id: id})[0].setSelection(false);
+
+          // myself.model.where({id: id}).each(function(m){
+          //   m.setSelection(false);
+          // });
+
+          //myself.trigger('shape:click', myself.wrapEvent(e));
         }
       });
 

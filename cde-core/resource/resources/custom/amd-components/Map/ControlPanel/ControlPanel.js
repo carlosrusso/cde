@@ -66,6 +66,10 @@ define([
       return this;
     },
 
+    getMode: function () {
+      return this.get('mode');
+    },
+
     isPanningMode: function () {
       return this.get('mode') === MODES.pan;
     },
