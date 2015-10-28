@@ -79,7 +79,7 @@ define([
     'amd!cdf/lib/underscore',
     './Map/engines/google/mapengine-google',
     './Map/engines/openlayers2/mapengine-openlayers',
-    './Map/model/SelectionTree',
+    './Map/model/MapSelectionTree',
     './Map/ControlPanel/ControlPanel',
     './Map/ShapeConversion',
     './Map/tileServices',
@@ -89,7 +89,7 @@ define([
     'css!./NewMapComponent'],
   function (UnmanagedComponent, Logger, $, _,
             GoogleMapEngine, OpenLayersEngine,
-            SelectionTree, ControlPanel,
+            MapSelectionTree, ControlPanel,
             ShapeConversion, _tileServices, ColorMapMixin,
             MapInputDataHandler) {
 
@@ -194,13 +194,21 @@ define([
       },
 
       initModel: function (json) {
-        this.model = new SelectionTree({
+        this.model = new MapSelectionTree({
           style: this.getStyle('global')
         });
+
+
         var series = _.map(json.resultset, function (row, rowIdx) {
           return {
             id: row[0],
             label: row[0],
+            styleMap: {
+              unselected: {
+                'default': {
+                }
+              }
+            },
             rowIdx: rowIdx,
             rawData: row
           };
@@ -210,13 +218,13 @@ define([
           id: 'markers',
           label: 'Markers',
           style: this.getStyle('markers'),
-          nodes: this.mapMode === 'markers' ? series : undefined
+          //nodes: this.mapMode === 'markers' ? series : undefined
         };
         var shapes = {
           id: 'shapes',
           label: 'Shapes',
           style: this.getStyle('shapes'),
-          nodes: this.mapMode === 'shapes' ? series : undefined
+          //nodes: this.mapMode === 'shapes' ? series : undefined
         };
 
         if (this.mapMode === 'markers') {
@@ -500,12 +508,7 @@ define([
         var styles = {
           'global': {
             unselected: {
-              'default': _.defaults(this.shapeSettings || {}, {
-                fillOpacity: 0.5,
-                strokeWidth: 2,
-                strokeColor: 'white',
-                zIndex: 0
-              }),
+              'default': {},
               hover: {
                 strokeWidth: 4
               }
@@ -533,7 +536,12 @@ define([
           },
           'shapes': {
             unselected: {
-              'default': {},
+              'default': _.defaults(this.shapeSettings || {}, {
+                fillOpacity: 0.5,
+                strokeWidth: 2,
+                strokeColor: 'white',
+                zIndex: 0
+              }),
               hover: {}
             },
             selected: {
