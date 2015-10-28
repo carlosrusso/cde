@@ -1,9 +1,7 @@
-define([
-  'common-ui/underscore'
-], function (_) {
+define([], function () {
 
   return {
-    get
+
 
   }
 

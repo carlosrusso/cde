@@ -91,16 +91,7 @@ define([
             GoogleMapEngine, OpenLayersEngine,
             SelectionTree, ControlPanel,
             ShapeConversion, _tileServices, ColorMapMixin,
-            MapInputDataHandler
-  ) {
-
-
-
-
-
-
-
-
+            MapInputDataHandler) {
 
 
     var NewMapComponent = UnmanagedComponent.extend(ColorMapMixin).extend({
@@ -313,15 +304,15 @@ define([
         }, this));
       },
 
-      _relayEvents: function(){
+      _relayEvents: function () {
         var engine = this.mapEngine;
         var component = this;
         var events = [
-          'marker:click', 'marker:mouseover',  'marker:mouseout',
-          'shape:click',  'shape:mouseover',   'shape:mouseout'
+          'marker:click', 'marker:mouseover', 'marker:mouseout',
+          'shape:click', 'shape:mouseover', 'shape:mouseout'
         ];
-        _.each(events, function(event){
-          component.listenTo(engine, event, function(){
+        _.each(events, function (event) {
+          component.listenTo(engine, event, function () {
             var args = _.union([event], arguments);
             component.trigger.apply(component, args);
           });
@@ -343,26 +334,24 @@ define([
         this.controlPanel = new ControlPanel($controlPanel);
         this.controlPanel.render();
         var eventMapping = {
-          'change:mode': function(model, value){
-              var modes = {
-                'selection': this.setSelectionMode,
-                'zoombox': this.setZoomBoxMode,
-                'pan': this.setPanningMode
-              };
-              modes[value] && modes[value].call(this);
+          'change:mode': function (model, value) {
+            var modes = {
+              'selection': this.setSelectionMode,
+              'zoombox': this.setZoomBoxMode,
+              'pan': this.setPanningMode
+            };
+            modes[value] && modes[value].call(this);
           },
-          'zoom:in': me.mapEngine.zoomIn,
-          'zoom:out': me.mapEngine.zoomOut
+          'zoom:in': this.mapEngine.zoomIn,
+          'zoom:out': this.mapEngine.zoomOut
         };
 
         var me = this;
-        _.chain(eventMapping)
-          .each(function (callback, event) {
-            if (_.isFunction(callback)){
-              me.listenTo(me.controlPanel, event, _.bind(callback, me.mapEngine));
-            }
-          })
-          .value();
+        _.each(eventMapping, function (callback, event) {
+          if (_.isFunction(callback)) {
+            me.listenTo(me.controlPanel, event, _.bind(callback, me.mapEngine));
+          }
+        });
       },
 
       render: function (json) {
@@ -507,11 +496,11 @@ define([
         });
       },
 
-      getStyle: function(styleName){
-        var styles =  {
+      getStyle: function (styleName) {
+        var styles = {
           'global': {
             unselected: {
-              'default':  _.defaults(this.shapeSettings || {}, {
+              'default': _.defaults(this.shapeSettings || {}, {
                 fillOpacity: 0.5,
                 strokeWidth: 2,
                 strokeColor: 'white',
@@ -521,11 +510,11 @@ define([
                 strokeWidth: 4
               }
             },
-            selected:{
+            selected: {
               'default': {
                 fillColor: 'red'
               },
-              hover:{
+              hover: {
                 strokeWidth: 4
               }
             }
@@ -537,9 +526,9 @@ define([
               },
               hover: {}
             },
-            selected:{
+            selected: {
               'default': {},
-              hover:{}
+              hover: {}
             }
           },
           'shapes': {
@@ -547,17 +536,17 @@ define([
               'default': {},
               hover: {}
             },
-            selected:{
+            selected: {
               'default': {},
-              hover:{}
+              hover: {}
             }
           }
         };
 
-        switch(styleName){
+        switch (styleName) {
           case 'shapes':
           case 'markers':
-            return $.extend(true, {},  styles.global, styles[styleName]);
+            return $.extend(true, {}, styles.global, styles[styleName]);
         }
         return styles.global;
       },
