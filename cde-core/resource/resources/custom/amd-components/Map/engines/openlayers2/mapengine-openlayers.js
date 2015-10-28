@@ -27,10 +27,13 @@ define([
 
   var OpenLayersEngine = MapEngine.extend({
     map: undefined,
-    markers: undefined,
-    shapes: undefined,
     //    featureLayer: undefined,
     API_KEY: 0,
+    constructor: function (options) {
+      this.base();
+      this.layers = {}; // map layers
+      this.controls = {}; // map controls
+    },
     init: function (tilesets) {
       this.tilesets = tilesets;
       Logger.log('Requested tilesets:' + JSON.stringify(tilesets), 'debug');
@@ -53,26 +56,6 @@ define([
       return deferred.promise();
     },
 
-
-    setShape: function (multiPolygon, shapeStyle, data) {
-      if (!multiPolygon) {
-        return;
-      }
-      var feature = this._geoJSONParser.parseFeature(multiPolygon);
-      $.extend(true, feature, {
-        attributes: {
-          //data: data,
-          //style: shapeStyle
-          style: this.toNativeStyle(shapeStyle)
-        },
-        data: {
-          data: data,
-          //style: shapeStyle
-        },
-        //style: this.toNativeStyle(shapeStyle)
-      });
-      this.shapes.addFeatures([feature]);
-    },
 
     toNativeStyle: function (foreignStyle) {
       var validStyle = {};
@@ -134,6 +117,23 @@ define([
       };
     },
 
+    render: function (model) {
+      this.model = model;
+      var me = this;
+      this.model.where({id: 'markers'}).each(function (m) {
+        me._renderMarker(m);
+      });
+      this.model.where({id: 'shapes'}).each(function (m) {
+        me._renderShape(m);
+      });
+    },
+
+    _renderShape: function (modelItem) {
+
+    },
+    _renderMarker: function (modelItem) {
+
+    },
 
     setMarker: function (markerInfo, description, data) {
       var proj = new OpenLayers.Projection('EPSG:4326'),  // transform from WGS 1984 //4326
@@ -143,31 +143,26 @@ define([
         mapProj // to the map system
       );
 
-      var featureOptions;
-      if (!markerInfo.icon){
+      var featureOptions = {
+        graphicName: 'circle',
+        label: 'label',
+        labelAlign: 'cm',
+        labelYOffset: -10,
+        fillColor: '#ff0000',
+        strokeColor: '#ffffff',
+        strokeWidth: 3,
+        pointRadius: 10,
+        fillOpacity: 0.9
+      };
+
+      if (markerInfo.icon) {
         featureOptions = {
-          graphicName: 'circle',
-          label: 'label',
-          labelAlign: 'cm',
-          labelYOffset: -10,
-          fillColor: '#ff0000',
-          strokeColor: '#ffffff',
-          strokeWidth: 3,
-          pointRadius: 10,
-          fillOpacity: 0.9
-        }
-      } else {
-        featureOptions = {
-          graphicName: 'circle',
-          pointRadius: 100*Math.random(),
           externalGraphic: markerInfo.icon,
           graphicWidth: markerInfo.width,
           graphicHeight: markerInfo.height
         }
       }
-      $.extend(featureOptions, {
-
-      });
+      $.extend(featureOptions, {});
 
       var marker = new OpenLayers.Geometry.Point(point.lon, point.lat);
       var feature = new OpenLayers.Feature.Vector(marker, {
@@ -176,9 +171,30 @@ define([
         marker: markerInfo
       }, featureOptions);
 
-      this.markers.addFeatures([feature]);
+      this.layers.markers.addFeatures([feature]);
 
     },
+
+    setShape: function (multiPolygon, shapeStyle, data) {
+      if (!multiPolygon) {
+        return;
+      }
+      var feature = this._geoJSONParser.parseFeature(multiPolygon);
+      $.extend(true, feature, {
+        attributes: {
+          //data: data,
+          //style: shapeStyle
+          style: this.toNativeStyle(shapeStyle)
+        },
+        data: {
+          data: data,
+          //style: shapeStyle
+        },
+        //style: this.toNativeStyle(shapeStyle)
+      });
+      this.layers.shapes.addFeatures([feature]);
+    },
+
 
     showPopup: function (data, mapElement, popupHeight, popupWidth, contents, popupContentDiv, borderColor) {
 
@@ -245,12 +261,11 @@ define([
         mapOptions.tileManager = new OpenLayers.TileManager();
       }
       this.map = new OpenLayers.Map(target, mapOptions);
-
-      var layer;
-      for (var k = 0, m = this.tilesets.length; k < m; k++) {
-        var thisTileset = this.tilesets[k],
-          tileset = this.tilesets[k].slice(0).split('-')[0],
-          variant = this.tilesets[k].slice(0).split('-').slice(1).join('-') || 'default';
+      var me = this;
+      _.each(this.tilesets, function (thisTileset) {
+        var layer;
+        var tileset = thisTileset.slice(0).split('-')[0],
+          variant = thisTileset.slice(0).split('-').slice(1).join('-') || 'default';
         Logger.log('Tilesets: ' + JSON.stringify(this.tilesets) + ', handling now :' + thisTileset + ', ie tileset ' + tileset + ', variant ' + variant);
         switch (tileset) {
           case 'googleXXX':
@@ -269,15 +284,16 @@ define([
             break;
 
           default:
-            layer = this.tileLayer(thisTileset);
+            layer = me.tileLayer(thisTileset);
             break;
         }
 
         // add the OpenStreetMap layer to the map
-        this.map.addLayer(layer);
-      }
+        me.map.addLayer(layer);
+        me.layers[thisTileset] = layer;
+      });
 
-      // this.shapes.style = new OpenLayers.StyleMap({
+      // this.layers.shapes.style = new OpenLayers.StyleMap({
       //   'default': {
       //     fillColor: '#aaaaaa',
       //     graphicZIndex: 0
@@ -288,7 +304,7 @@ define([
       //   }
       // });
 
-      var style = OpenLayers.Util.extend( {}, OpenLayers.Feature.Vector.style[ 'default' ] );
+      var style = OpenLayers.Util.extend({}, OpenLayers.Feature.Vector.style['default']);
 
       style.fillColor = '${fillColor}';
       style.fillOpacity = '${fillOpacity}';
@@ -296,12 +312,12 @@ define([
       style.graphicZIndex = '${graphicZIndex}';
       style.strokeColor = '${strokeColor}';
 
-      var olStyle = new OpenLayers.Style( style, {
+      var olStyle = new OpenLayers.Style(style, {
         context: {
-          fillColor: function( feature ) {
-            if( feature.hasOwnProperty( 'attributes' ) ) {
-              if( feature.attributes.hasOwnProperty( 'style' ) ) {
-                if( feature.attributes.style.hasOwnProperty( 'fillColor' ) ) {
+          fillColor: function (feature) {
+            if (feature.hasOwnProperty('attributes')) {
+              if (feature.attributes.hasOwnProperty('style')) {
+                if (feature.attributes.style.hasOwnProperty('fillColor')) {
                   return feature.attributes.style.fillColor;
                 }
               }
@@ -311,12 +327,10 @@ define([
             return '#999999';
           },
 
-          strokeColor: function ( feature ) {
-
+          strokeColor: function (feature) {
             return 'black';
-
           }
-        }  
+        }
       });
 
       var olOver = new OpenLayers.Style({
@@ -335,31 +349,31 @@ define([
 
 
       // add layers for the markers and for the shapes
-      this.shapes = new OpenLayers.Layer.Vector('Shapes', {
-        styleMap: olStyleMap,  
+      this.layers.shapes = new OpenLayers.Layer.Vector('Shapes', {
+        styleMap: olStyleMap,
         rendererOptions: {
           zIndexing: true
         }
       });
 
-      this.markers = new OpenLayers.Layer.Vector('Markers');
+      this.layers.markers = new OpenLayers.Layer.Vector('Markers');
 
-      this.map.addLayers([this.shapes, this.markers]);
+      this.map.addLayers([this.layers.shapes, this.layers.markers]);
       this.setCallbacks();
 
       // add box selector controler
-      this.boxSelector = new OpenLayers.Control.SelectFeature(this.shapes, {
+      this.controls.boxSelector = new OpenLayers.Control.SelectFeature(this.layers.shapes, {
         clickout: true,
         toggle: true,
         multiple: true,
         hover: false,
         box: true
       });
-      this.map.addControl(this.boxSelector);
+      this.map.addControl(this.controls.boxSelector);
 
       // add zomm box controler
-      this.zoomBox = new OpenLayers.Control.ZoomBox();
-      this.map.addControl(this.zoomBox);
+      this.controls.zoomBox = new OpenLayers.Control.ZoomBox();
+      this.map.addControl(this.controls.zoomBox);
 
 
       this._geoJSONParser = new OpenLayers.Format.GeoJSON({
@@ -369,30 +383,30 @@ define([
       });
     },
 
-    setPanningMode: function() {
+    setPanningMode: function () {
       console.log('Panning mode enable');
-      this.boxSelector.deactivate();
-      this.zoomBox.deactivate();
+      this.controls.boxSelector.deactivate();
+      this.controls.zoomBox.deactivate();
     },
 
-    setZoomBoxMode: function() {
+    setZoomBoxMode: function () {
       console.log('Zoom mode enable');
-      this.boxSelector.deactivate();
-      this.zoomBox.activate();
+      this.controls.boxSelector.deactivate();
+      this.controls.zoomBox.activate();
     },
 
-    setSelectionMode: function() {
+    setSelectionMode: function () {
       console.log('Selection mode enable');
-      this.zoomBox.deactivate();
-      this.boxSelector.activate();
+      this.controls.zoomBox.deactivate();
+      this.controls.boxSelector.activate();
     },
 
-    zoomIn: function() {
+    zoomIn: function () {
       console.log('zoomIn');
       this.map.zoomIn();
     },
 
-    zoomOut: function() {
+    zoomOut: function () {
       console.log('zoomIn');
       this.map.zoomOut();
     },
@@ -400,8 +414,8 @@ define([
     updateViewport: function (centerLongitude, centerLatitude, zoomLevel) {
 
       var bounds = new OpenLayers.Bounds();
-      var markersBounds = this.markers.getDataExtent();
-      var shapesBounds = this.shapes.getDataExtent();
+      var markersBounds = this.layers.markers.getDataExtent();
+      var shapesBounds = this.layers.shapes.getDataExtent();
       if (markersBounds || shapesBounds) {
         bounds.extend(markersBounds);
         bounds.extend(shapesBounds);
@@ -453,7 +467,7 @@ define([
 
       registerViewportEvents.call(this);
 
-      var hoverCtrl = new OpenLayers.Control.SelectFeature([this.markers, this.shapes], {
+      this.controls.hoverCtrl = new OpenLayers.Control.SelectFeature([this.layers.markers, this.layers.shapes], {
         hover: true,
         highlightOnly: true,
         renderIntent: 'temporary',
@@ -503,18 +517,19 @@ define([
         }
       });
       // allowing event to travel down
-      hoverCtrl.handlers['feature'].stopDown = false;
-      this.map.addControl(hoverCtrl);
-      hoverCtrl.activate();
-      var clickCtrl = new OpenLayers.Control.SelectFeature([this.markers, this.shapes], {
+      this.controls.hoverCtrl.handlers['feature'].stopDown = false;
+      this.map.addControl(this.controls.hoverCtrl);
+      this.controls.hoverCtrl.activate();
+
+      this.controls.clickCtrl = new OpenLayers.Control.SelectFeature([this.layers.markers, this.layers.shapes], {
         clickout: false
       });
       // allowing event to travel down
-      clickCtrl.handlers['feature'].stopDown = false;
-      this.map.addControl(clickCtrl);
-      clickCtrl.activate();
+      this.controls.clickCtrl.handlers['feature'].stopDown = false;
+      this.map.addControl(this.controls.clickCtrl);
+      this.controls.clickCtrl.activate();
 
-      this.markers.events.on({
+      this.layers.markers.events.on({
         featurehighlighted: function (e) {
           myself.trigger('marker:mouseover', myself.wrapEvent(e));
         },
@@ -525,11 +540,11 @@ define([
           myself.trigger('marker:click', myself.wrapEvent(e));
           // The feature remains selected after we close the popup box, which disables clicking on the same box.
           // Thus we enforce that no marker is selected.
-          clickCtrl.unselectAll();
+          myself.controls.clickCtrl.unselectAll();
         }
       });
 
-      this.shapes.events.on({
+      this.layers.shapes.events.on({
         featureselected: function (e) {
 
           // getAttrib
@@ -537,7 +552,7 @@ define([
           // redraw
           console.log(e.feature.data.data.key);
 
-          var id =  e.feature.data.data.key;
+          var id = e.feature.data.data.key;
           myself.model.where({id: id})[0].setSelection(true);
 
           //myself.trigger('shape:click', myself.wrapEvent(e));
@@ -545,7 +560,7 @@ define([
         featureunselected: function (e) {
           console.log(e.feature.data.data.key);
 
-          var id =  e.feature.data.data.key;
+          var id = e.feature.data.data.key;
           myself.model.where({id: id})[0].setSelection(false);
 
           // myself.model.where({id: id}).each(function(m){
@@ -557,7 +572,7 @@ define([
       });
 
       // letting shapes events fall through
-      this.shapes.events.fallThrough = true;
+      this.layers.shapes.events.fallThrough = true;
     },
 
     tileLayer: function (name) {
