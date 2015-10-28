@@ -84,11 +84,15 @@ define([
     './Map/ShapeConversion',
     './Map/tileServices',
     './Map/ColorMapMixin',
+    './Map/model/MapInputDataHandler',
     './Map/addIns/mapAddins',
     'css!./NewMapComponent'],
   function (UnmanagedComponent, Logger, $, _,
             GoogleMapEngine, OpenLayersEngine,
-            SelectionTree, ControlPanel, ShapeConversion, _tileServices, ColorMapMixin) {
+            SelectionTree, ControlPanel,
+            ShapeConversion, _tileServices, ColorMapMixin,
+            MapInputDataHandler
+  ) {
 
 
 
@@ -147,7 +151,7 @@ define([
         }
         this.maybeToggleBlock(true);
 
-        this.registerEvents();
+        this._registerEvents();
         if (_.isString(this.tilesets)) {
           this.tilesets = [this.tilesets];
         }
@@ -199,7 +203,9 @@ define([
       },
 
       initModel: function (json) {
-        this.model = new SelectionTree();
+        this.model = new SelectionTree({
+          style: this.getStyle('global')
+        });
         var series = _.map(json.resultset, function (row, rowIdx) {
           return {
             id: row[0],
@@ -212,11 +218,13 @@ define([
         var markers = {
           id: 'markers',
           label: 'Markers',
+          style: this.getStyle('markers'),
           nodes: this.mapMode === 'markers' ? series : undefined
         };
         var shapes = {
           id: 'shapes',
           label: 'Shapes',
+          style: this.getStyle('shapes'),
           nodes: this.mapMode === 'shapes' ? series : undefined
         };
 
@@ -226,7 +234,6 @@ define([
         if (this.mapMode === 'shapes') {
           this.model.add(shapes);
         }
-
       },
 
       resolveShapes: function (url, keys, json) {
@@ -267,6 +274,9 @@ define([
       },
 
       init: function () {
+        //var inputOptions = {};
+        //this.inputDataHandler = new MapInputDataHandler(inputOptions);
+
         var options = {
           API_KEY: this.API_KEY || window.API_KEY, //either local or global API_KEY
           tileServices: this.tileServices,
@@ -290,9 +300,9 @@ define([
 
           this.ph = this.placeholder();
           this.ph.empty(); //clear();
-          this.initControlPanel();
+          this._initControlPanel();
 
-          this.initPopup();
+          this._initPopup();
 
           //var $map = $('<div class="map-content" />').appendTo(this.ph);
 
@@ -319,36 +329,33 @@ define([
 
       },
 
-      initPopup: function () {
+      _initPopup: function () {
         var $popupContentsDiv = $("#" + this.popupContentsDiv);
         var $popupDivHolder = $popupContentsDiv.clone();
         //after first render, the popupContentsDiv gets moved inside ph, it will be discarded above, make sure we re-add him
         if (this.popupContentsDiv && $popupContentsDiv.length != 1) {
           this.ph.append($popupDivHolder.html("None"));
         }
-
       },
 
-      initControlPanel: function () {
-
-        var me = this;
-
+      _initControlPanel: function () {
         var $controlPanel = $('<div class="map-controls" />').appendTo(this.ph);
         this.controlPanel = new ControlPanel($controlPanel);
         this.controlPanel.render();
         var eventMapping = {
           'change:mode': function(model, value){
               var modes = {
-                'selection': me.mapEngine.setSelectionMode,
+                'selection': this.setSelectionMode,
                 'zoombox': this.setZoomBoxMode,
                 'pan': this.setPanningMode
               };
               modes[value] && modes[value].call(this);
           },
-          'zoom:in': me.mapEngine.zoomIn,
-          'zoom:out': me.mapEngine.zoomOut
+          'zoom:in': _.noop,
+          'zoom:out': _.noop
         };
 
+        var me = this;
         _.chain(eventMapping)
           .each(function (callback, event) {
             if (_.isFunction(callback)){
@@ -390,7 +397,7 @@ define([
         Logger.log('Stopping clock: update cycle of ' + this.htmlObject + ' took ' + (new Date() - this.clock) + ' ms', 'debug');
       },
 
-      registerEvents: function () {
+      _registerEvents: function () {
         /** Registers handlers for mouse events
          *
          */
@@ -414,7 +421,7 @@ define([
         //   Logger.log('Marker mouseout');
         // });
 
-        this.on('xshape:mouseover', function (event) {
+        this.on('shape:mouseover', function (event) {
           // Logger.log('Shape mouseover');
           //this.mapEngine.showPopup(event.data,  event.feature, 50, 20, "Hello", undefined, 'red'); //Poor man's popup, only seems to work with OpenLayers
           if (_.isFunction(me.shapeMouseOver)) {
@@ -426,7 +433,7 @@ define([
           }
         });
 
-        this.on('xshape:mouseout', function (event) {
+        this.on('shape:mouseout', function (event) {
           //Logger.log('Shape mouseout');
           var result = {};
           if (_.isFunction(me.shapeMouseOut)) {
@@ -443,7 +450,7 @@ define([
 
         });
 
-        this.on('xshape:click', function (event) {
+        this.on('shape:click', function (event) {
           if (_.isFunction(me.shapeMouseClick)) {
             var result = me.shapeMouseClick(event);
             if (result) {
@@ -467,39 +474,92 @@ define([
         //Build an hashmap from metadata
         //var mapping = this.getMapping(values);
         //TODO: Discover automatically which columns correspond to the key and to the value
-        var idxKey = 0,
-          idxValue = 1;
+        var idx = {
+          key: 0,
+          value: 1
+        };
 
-        // Define default shape appearance
-        var shapeSettings = _.defaults(this.shapeSettings || {}, {
-          fillOpacity: 0.5,
-          strokeWidth: 2,
-          strokeColor: 'white',
-          zIndex: 0
-        });
+        var defaultShapeStyle = this.getStyle('shapes').unselected.default;
 
         // Attribute a color each shape
         var colormap = this.getColorMap();
-        var qvalues = _.pluck(json.resultset, idxValue);
+        var qvalues = _.pluck(json.resultset, idx.value);
         var minValue = _.min(qvalues),
           maxValue = _.max(qvalues);
 
-        var myself = this;
+        var me = this;
         _.each(json.resultset, function (row) {
-          var fillColor = myself.mapColor(row[idxValue], minValue, maxValue, colormap);
+
+          var shapeDefinition = me.shapeDefinition[row[idx.key]];
+          var fillColor = me.mapColor(row[idx.value], minValue, maxValue, colormap);
+          var shapeStyle = _.defaults({
+            fillColor: fillColor
+          }, defaultShapeStyle);
           var data = {
             rawData: row,
-            key: row[idxKey],
-            value: row[idxValue],
+            key: row[idx.key],
+            value: row[idx.value],
             minValue: minValue,
             maxValue: maxValue
           };
 
-          myself.mapEngine.setShape(myself.shapeDefinition[row[idxKey]], _.defaults({
-            fillColor: fillColor
-          }, shapeSettings), data);
+          me.mapEngine.setShape(shapeDefinition, shapeStyle, data);
         });
-        this.mapEngine.postSetShapes(this);
+      },
+
+      getStyle: function(styleName){
+        var styles =  {
+          'global': {
+            unselected: {
+              'default':  _.defaults(this.shapeSettings || {}, {
+                fillOpacity: 0.5,
+                strokeWidth: 2,
+                strokeColor: 'white',
+                zIndex: 0
+              }),
+              hover: {
+                strokeWidth: 4
+              }
+            },
+            selected:{
+              'default': {
+                fillColor: 'red'
+              },
+              hover:{
+                strokeWidth: 4
+              }
+            }
+          },
+          'markers': {
+            unselected: {
+              'default': {
+                pointRadius: 10
+              },
+              hover: {}
+            },
+            selected:{
+              'default': {},
+              hover:{}
+            }
+          },
+          'shapes': {
+            unselected: {
+              'default': {},
+              hover: {}
+            },
+            selected:{
+              'default': {},
+              hover:{}
+            }
+          }
+        };
+
+        switch(styleName){
+          case 'shapes':
+          case 'markers':
+            return $.extend(true, {},  styles.global, styles[styleName]);
+        }
+        return styles.global;
       },
 
       setupMarkers: function (json) {

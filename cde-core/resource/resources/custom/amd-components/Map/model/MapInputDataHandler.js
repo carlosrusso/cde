@@ -1,6 +1,8 @@
 define([
-  'common-ui/underscore'
-], function (_) {
+    'cdf/lib/jquery',
+    'amd!cdf/lib/underscore',
+    './InputDataHandler'],
+  function( $, _, BaseModel ) {
 
   return MapInputDataHandler;
 
