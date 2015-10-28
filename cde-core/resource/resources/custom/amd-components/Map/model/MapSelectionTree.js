@@ -1,8 +1,9 @@
 define([
   './SelectionTree',
   './SelectionStates',
-  'amd!cdf/lib/underscore'
-], function (SelectionTree, SelectionStates, _) {
+  'amd!cdf/lib/underscore',
+  'cdf/lib/jquery'
+], function (SelectionTree, SelectionStates, _, $) {
 
   var MapSelectionTree = SelectionTree.extend({
     defaults: {
