@@ -43,6 +43,9 @@ define([
     },
 
     setPanningMode: function () {
+      if (this.isSelectionMode()){
+        this.trigger('selection:complete');
+      }
       this.set('mode', MODES.pan);
       return this;
     },

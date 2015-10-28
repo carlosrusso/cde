@@ -84,17 +84,19 @@ define([
     './Map/ShapeConversion',
     './Map/tileServices',
     './Map/ColorMapMixin',
+    './Map/ISelector',
     './Map/model/MapInputDataHandler',
     './Map/addIns/mapAddIns',
     'css!./NewMapComponent'],
   function (UnmanagedComponent, Logger, $, _,
             GoogleMapEngine, OpenLayersEngine,
             MapSelectionTree, ControlPanel,
-            ShapeConversion, _tileServices, ColorMapMixin,
+            ShapeConversion, _tileServices,
+            ColorMapMixin, ISelector,
             MapInputDataHandler) {
 
 
-    var NewMapComponent = UnmanagedComponent.extend(ColorMapMixin).extend({
+    var NewMapComponent = UnmanagedComponent.extend(ISelector).extend(ColorMapMixin).extend({
       ph: undefined, //perhaps this is not needed
       mapEngine: undefined, // points to one instance of a MapEngine object
       locationResolver: undefined, // addIn used to process location
@@ -218,13 +220,13 @@ define([
           id: 'markers',
           label: 'Markers',
           style: this.getStyle('markers'),
-          //nodes: this.mapMode === 'markers' ? series : undefined
+          nodes: this.mapMode === 'markers' ? series : undefined
         };
         var shapes = {
           id: 'shapes',
           label: 'Shapes',
           style: this.getStyle('shapes'),
-          //nodes: this.mapMode === 'shapes' ? series : undefined
+          nodes: this.mapMode === 'shapes' ? series : undefined
         };
 
         if (this.mapMode === 'markers') {

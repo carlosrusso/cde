@@ -17,8 +17,14 @@
       <Property>parameters</Property>
       <Property>listeners</Property>
       <Property>preExecution</Property>
-      <Property>postExecution</Property>\
+      <Property>postExecution</Property>
       <Property>postFetch</Property>
+
+      <Property>parameter</Property>
+      <Property>preChange</Property>
+      <Property>postChange</Property>
+
+
       <Property>centerLongitude</Property>
       <Property>centerLatitude</Property>
       <Property>defaultZoomLevel</Property>
