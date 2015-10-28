@@ -27,7 +27,6 @@ define([
     setMarker: function() {},
     showPopup: function() {},
     setShape: function(polygonArray, shapeStyle, data) {},
-    postSetShapes: function() {},
     toNativeStyle: function(foreignStyle) {
       var validStyle = {};
       _.each(foreignStyle, function(value, key) {
