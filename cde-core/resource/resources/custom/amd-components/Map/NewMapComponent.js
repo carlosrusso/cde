@@ -257,7 +257,8 @@ define([
           label: this.mapMode,
           styleMap: this.getStyleMap(this.mapMode),
           minValue: minValue,
-          maxValue: maxValue
+          maxValue: maxValue,
+          nodes: this.initNodesModel(json)
         };
         this.model.add(modelTree);
 
@@ -298,6 +299,7 @@ define([
         });
 
         console.log(series);
+        return series;
 
         //Build an hashmap from metadata
         //var mapping = this.getMapping(values);
@@ -453,7 +455,7 @@ define([
             modes[value] && modes[value].call(this);
           },
           'zoom:in': this.mapEngine.zoomIn,
-          'zoom:out': this.mapEngine.zoomOut
+          'zoom:out': this.mapEngine.zoomOut,
         };
 
         var me = this;
@@ -461,6 +463,10 @@ define([
           if (_.isFunction(callback)) {
             me.listenTo(me.controlPanel, event, _.bind(callback, me.mapEngine));
           }
+        });
+
+        this.listenTo(this.controlPanel, 'selection:complete', function(){
+          me.processChange();
         });
       },
 
