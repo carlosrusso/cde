@@ -1,5 +1,5 @@
 define([
-  'common-ui/underscore'
+  'amd!cdf/lib/underscore'
 ], function (_) {
 
   var ColorMapMixin = {
