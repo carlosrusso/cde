@@ -241,8 +241,6 @@ define([
 
     },
 
-    postSetShapes: function () {
-    },
 
     unselectPrevShape: function (key, shapes, shapeStyle) {
       var myself = this;

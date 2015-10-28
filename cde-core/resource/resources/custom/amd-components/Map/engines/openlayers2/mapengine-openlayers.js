@@ -74,9 +74,6 @@ define([
       this.shapes.addFeatures([feature]);
     },
 
-    postSetShapes: function () {
-    },
-
     toNativeStyle: function (foreignStyle) {
       var validStyle = {};
       _.each(foreignStyle, function (value, key) {
