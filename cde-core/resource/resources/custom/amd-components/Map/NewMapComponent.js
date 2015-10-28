@@ -181,6 +181,8 @@ define([
         };
 
         this.initModel(json);
+        this.initNodesModel(json);
+
         var me = this;
         if (this.mapMode == "shapes") {
           var keys = _.pluck(json.resultset, idx.id);
@@ -194,12 +196,84 @@ define([
       },
 
       initModel: function (json) {
+
         this.model = new MapSelectionTree({
           style: this.getStyle('global')
         });
 
+        // var series = _.map(json.resultset, function (row, rowIdx) {
+        //   return {
+        //     id: row[0],
+        //     label: row[0],
+        //     styleMap: {
+        //       unselected: {
+        //         'default': {
+        //         }
+        //       }
+        //     },
+        //     rowIdx: rowIdx,
+        //     rawData: row
+        //   };
+        // });
+
+        // var markers = {
+        //   id: 'markers',
+        //   label: 'Markers',
+        //   style: this.getStyle('markers'),
+        //   //nodes: this.mapMode === 'markers' ? series : undefined
+        // };
+
+        // var shapes = {
+        //   id: 'shapes',
+        //   label: 'Shapes',
+        //   style: this.getStyle('shapes'),
+        //   //nodes: this.mapMode === 'shapes' ? series : undefined
+        // };
+
+        // if (this.mapMode === 'markers') {
+        //   this.model.add(markers);
+        // }
+
+        // if (this.mapMode === 'shapes') {
+        //   this.model.add(shapes);
+        // }
+
+          //TODO: Discover automatically which columns correspond to the key and to the value
+        var idx = {
+          key: 0,
+          value: 1
+        };
+
+        var qvalues = _.pluck(json.resultset, idx.value);
+        var minValue = _.min(qvalues),
+            maxValue = _.max(qvalues);
+
+        var modelTree = {
+          id: this.mapMode,
+          label: this.mapMode,
+          styleMap: this.getStyle(this.mapMode),
+          minValue: minValue,
+          maxValue: maxValue
+        };
+        this.model.add(modelTree);
+
+      },
+
+      initNodesModel: function (json) {
+
+        var nodeStyleMap = {
+          unselected: {
+            'default': {},
+            'hover'  : {}
+          },
+          selected: {
+            'default': {},
+            'hover'  : {}
+          }
+        };
 
         var series = _.map(json.resultset, function (row, rowIdx) {
+
           return {
             id: row[0],
             label: row[0],
@@ -212,27 +286,52 @@ define([
             rowIdx: rowIdx,
             rawData: row
           };
+
         });
 
-        var markers = {
-          id: 'markers',
-          label: 'Markers',
-          style: this.getStyle('markers'),
-          //nodes: this.mapMode === 'markers' ? series : undefined
-        };
-        var shapes = {
-          id: 'shapes',
-          label: 'Shapes',
-          style: this.getStyle('shapes'),
-          //nodes: this.mapMode === 'shapes' ? series : undefined
-        };
+        console.log(series);
 
-        if (this.mapMode === 'markers') {
-          this.model.add(markers);
-        }
-        if (this.mapMode === 'shapes') {
-          this.model.add(shapes);
-        }
+        //Build an hashmap from metadata
+        //var mapping = this.getMapping(values);
+        //TODO: Discover automatically which columns correspond to the key and to the value
+        // var idx = {
+        //   key: 0,
+        //   value: 1
+        // };
+
+        // var defaultShapeStyle = this.getStyle('shapes').unselected.default;
+
+        // // Attribute a color each shape
+        // var colormap = this.getColorMap();
+        // var qvalues = _.pluck(json.resultset, idx.value);
+        // var minValue = _.min(qvalues),
+        //   maxValue = _.max(qvalues);
+
+        // var me = this;
+        // _.each(json.resultset, function (row) {
+
+        //   var shapeDefinition = me.shapeDefinition[row[idx.key]];
+        //   var fillColor = me.mapColor(row[idx.value], minValue, maxValue, colormap);
+        //   var shapeStyle = _.defaults({
+        //     fillColor: fillColor
+        //   }, defaultShapeStyle);
+        //   var data = {
+        //     rawData: row,
+        //     key: row[idx.key],
+        //     value: row[idx.value],
+        //     minValue: minValue,
+        //     maxValue: maxValue
+        //   };
+
+        //   me.mapEngine.setShape(shapeDefinition, shapeStyle, data);
+        // });
+
+
+
+
+
+
+
       },
 
       resolveShapes: function (url, keys, json) {
