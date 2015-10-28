@@ -85,7 +85,7 @@ define([
     './Map/tileServices',
     './Map/ColorMapMixin',
     './Map/model/MapInputDataHandler',
-    './Map/addIns/mapAddins',
+    './Map/addIns/mapAddIns',
     'css!./NewMapComponent'],
   function (UnmanagedComponent, Logger, $, _,
             GoogleMapEngine, OpenLayersEngine,
@@ -543,12 +543,15 @@ define([
           }
         };
 
+        return styles[styleName] || {};
+        /*
         switch (styleName) {
           case 'shapes':
           case 'markers':
             return $.extend(true, {}, styles.global, styles[styleName]);
         }
         return styles.global;
+        */
       },
 
       setupMarkers: function (json) {

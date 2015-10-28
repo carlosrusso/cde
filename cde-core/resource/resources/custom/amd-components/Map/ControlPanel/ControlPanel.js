@@ -18,7 +18,7 @@ define([
       this.base();
       this.ph = $(domNode);
       this.options = options;
-      this.set('mode', MODES.pan);
+      this.setPanningMode();
       return this;
     },
 
@@ -34,34 +34,26 @@ define([
     },
 
     zoomOut: function () {
-      console.log('zoom out');
       this.trigger('zoom:out');
       return this;
     },
     zoomIn: function () {
-      console.log('zoom in');
       this.trigger('zoom:in');
       return this;
     },
 
     setPanningMode: function () {
       this.set('mode', MODES.pan);
-      console.log('pan');
-      this.trigger('mode:pan');
       return this;
     },
 
     setZoomBoxMode: function () {
       this.set('mode', MODES.zoombox);
-      console.log('zoombox');
-      this.trigger('mode:zoombox');
       return this;
     },
 
     setSelectionMode: function () {
       this.set('mode', MODES.selection);
-      console.log('selection');
-      this.trigger('mode:selection');
       return this;
     },
 
