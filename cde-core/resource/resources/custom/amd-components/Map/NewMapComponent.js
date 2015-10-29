@@ -81,20 +81,24 @@ define([
     './Map/engines/openlayers2/mapengine-openlayers',
     './Map/model/MapSelectionTree',
     './Map/ControlPanel/ControlPanel',
+    './Map/Styles',
     './Map/ShapeConversion',
     './Map/tileServices',
     './Map/ColorMapMixin',
+    './Map/ISelector',
     './Map/model/MapInputDataHandler',
     './Map/addIns/mapAddIns',
     'css!./NewMapComponent'],
   function (UnmanagedComponent, Logger, $, _,
             GoogleMapEngine, OpenLayersEngine,
             MapSelectionTree, ControlPanel,
-            ShapeConversion, _tileServices, ColorMapMixin,
+            Styles,
+            ShapeConversion, _tileServices,
+            ColorMapMixin, ISelector,
             MapInputDataHandler) {
 
 
-    var NewMapComponent = UnmanagedComponent.extend(ColorMapMixin).extend({
+    var NewMapComponent = UnmanagedComponent.extend(ISelector).extend(ColorMapMixin).extend({
       ph: undefined, //perhaps this is not needed
       mapEngine: undefined, // points to one instance of a MapEngine object
       locationResolver: undefined, // addIn used to process location
@@ -198,7 +202,7 @@ define([
       initModel: function (json) {
 
         this.model = new MapSelectionTree({
-          style: this.getStyle('global')
+          styleMap: this.getStyleMap('global')
         });
 
         // var series = _.map(json.resultset, function (row, rowIdx) {
@@ -219,14 +223,14 @@ define([
         // var markers = {
         //   id: 'markers',
         //   label: 'Markers',
-        //   style: this.getStyle('markers'),
+        //   style: this.getStyleMap('markers'),
         //   //nodes: this.mapMode === 'markers' ? series : undefined
         // };
 
         // var shapes = {
         //   id: 'shapes',
         //   label: 'Shapes',
-        //   style: this.getStyle('shapes'),
+        //   style: this.getStyleMap('shapes'),
         //   //nodes: this.mapMode === 'shapes' ? series : undefined
         // };
 
@@ -251,11 +255,16 @@ define([
         var modelTree = {
           id: this.mapMode,
           label: this.mapMode,
-          styleMap: this.getStyle(this.mapMode),
+          styleMap: this.getStyleMap(this.mapMode),
           minValue: minValue,
-          maxValue: maxValue
+          maxValue: maxValue,
+          nodes: this.initNodesModel(json)
         };
         this.model.add(modelTree);
+
+        // Mark selected model items
+        var idList = this.dashboard.getParameterValue(this.parameter);
+        this.setValue(idList);
 
       },
 
@@ -290,6 +299,7 @@ define([
         });
 
         console.log(series);
+        return series;
 
         //Build an hashmap from metadata
         //var mapping = this.getMapping(values);
@@ -299,7 +309,7 @@ define([
         //   value: 1
         // };
 
-        // var defaultShapeStyle = this.getStyle('shapes').unselected.default;
+        // var defaultShapeStyle = this.getStyleMap('shapes').unselected.default;
 
         // // Attribute a color each shape
         // var colormap = this.getColorMap();
@@ -325,11 +335,6 @@ define([
 
         //   me.mapEngine.setShape(shapeDefinition, shapeStyle, data);
         // });
-
-
-
-
-
 
 
       },
@@ -450,7 +455,7 @@ define([
             modes[value] && modes[value].call(this);
           },
           'zoom:in': this.mapEngine.zoomIn,
-          'zoom:out': this.mapEngine.zoomOut
+          'zoom:out': this.mapEngine.zoomOut,
         };
 
         var me = this;
@@ -458,6 +463,10 @@ define([
           if (_.isFunction(callback)) {
             me.listenTo(me.controlPanel, event, _.bind(callback, me.mapEngine));
           }
+        });
+
+        this.listenTo(this.controlPanel, 'selection:complete', function(){
+          me.processChange();
         });
       },
 
@@ -575,7 +584,7 @@ define([
           value: 1
         };
 
-        var defaultShapeStyle = this.getStyle('shapes').unselected.default;
+        var defaultShapeStyle = this.getStyleMap('shapes').pan.unselected.default;
 
         // Attribute a color each shape
         var colormap = this.getColorMap();
@@ -603,62 +612,12 @@ define([
         });
       },
 
-      getStyle: function (styleName) {
-        var styles = {
-          'global': {
-            unselected: {
-              'default': {},
-              hover: {
-                strokeWidth: 4
-              }
-            },
-            selected: {
-              'default': {
-                fillColor: 'red'
-              },
-              hover: {
-                strokeWidth: 4
-              }
-            }
-          },
-          'markers': {
-            unselected: {
-              'default': {
-                pointRadius: 10
-              },
-              hover: {}
-            },
-            selected: {
-              'default': {},
-              hover: {}
-            }
-          },
-          'shapes': {
-            unselected: {
-              'default': _.defaults(this.shapeSettings || {}, {
-                fillOpacity: 0.5,
-                strokeWidth: 2,
-                strokeColor: 'white',
-                zIndex: 0
-              }),
-              hover: {}
-            },
-            selected: {
-              'default': {},
-              hover: {}
-            }
-          }
-        };
-
-        return styles[styleName] || {};
-        /*
-        switch (styleName) {
+      getStyleMap: function (styleName) {
+        switch (styleName){
           case 'shapes':
-          case 'markers':
-            return $.extend(true, {}, styles.global, styles[styleName]);
+            return _.defaults(this.shapeSettings || {}, Styles.getStyleMap('shapes'));
         }
-        return styles.global;
-        */
+        return Styles.getStyleMap(styleName);
       },
 
       setupMarkers: function (json) {
