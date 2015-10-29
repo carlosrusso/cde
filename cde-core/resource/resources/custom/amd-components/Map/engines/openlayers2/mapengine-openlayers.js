@@ -120,12 +120,19 @@ define([
     render: function (model) {
       this.model = model;
       var me = this;
-      this.model.where({id: 'markers'}).each(function (m) {
+      this.model.where({id: 'markers'}).flatten().reject(function(m){ return m.children(); }).each(function (m) {
         me._renderMarker(m);
       });
       this.model.where({id: 'shapes'}).each(function (m) {
         me._renderShape(m);
       });
+
+      // this.model.flatten().reject(function(m){ return m.children(); }).each(function (m) {
+      //   m.getType()
+      //     case 'markers':
+      //   }
+      // });
+      
     },
 
     _renderShape: function (modelItem) {

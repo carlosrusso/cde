@@ -186,6 +186,7 @@ define([
 
         this.initModel(json);
         this.initNodesModel(json);
+        //this.mapEngine.render(this.model)
 
         var me = this;
         if (this.mapMode == "shapes") {
@@ -333,6 +334,7 @@ define([
             id: row[0],
             label: row[0],
             styleMap: styleMapTemplate,
+            shapeDefinition: this.shapeDefinition[row[0]];
             rowIdx: rowIdx,
             rawData: row
           };
@@ -658,7 +660,13 @@ define([
       getStyleMap: function (styleName) {
         switch (styleName){
           case 'shapes':
-            return _.defaults(this.shapeSettings || {}, Styles.getStyleMap('shapes'));
+            return _.defaults({
+              pan: {
+                unselected: {
+                  normal: this.shapeSettings
+                }
+              }
+            }, Styles.getStyleMap('shapes'));
         }
         return Styles.getStyleMap(styleName);
       },
