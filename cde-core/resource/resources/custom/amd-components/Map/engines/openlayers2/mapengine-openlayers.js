@@ -371,7 +371,7 @@ define([
       });
       this.map.addControl(this.controls.boxSelector);
 
-      // add zomm box controler
+      // add zoom box controler
       this.controls.zoomBox = new OpenLayers.Control.ZoomBox();
       this.map.addControl(this.controls.zoomBox);
 

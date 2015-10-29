@@ -242,7 +242,7 @@ define([
         //   this.model.add(shapes);
         // }
 
-          //TODO: Discover automatically which columns correspond to the key and to the value
+        //TODO: Discover automatically which columns correspond to the key and to the value
         var idx = {
           key: 0,
           value: 1
@@ -252,13 +252,16 @@ define([
         var minValue = _.min(qvalues),
             maxValue = _.max(qvalues);
 
+        var colormap = this.getColorMap();
+
         var modelTree = {
           id: this.mapMode,
           label: this.mapMode,
           styleMap: this.getStyleMap(this.mapMode),
           minValue: minValue,
           maxValue: maxValue,
-          nodes: this.initNodesModel(json)
+          colormap: colormap//,
+          //nodes: this.initNodesModel(json)
         };
         this.model.add(modelTree);
 
@@ -270,36 +273,76 @@ define([
 
       initNodesModel: function (json) {
 
+        var me = this;
+
         var nodeStyleMap = {
           unselected: {
-            'default': {},
-            'hover'  : {}
-          },
-          selected: {
-            'default': {},
-            'hover'  : {}
+            'default': {
+              fillColor: function(row, rowIdx) { 
+                // TODO: Discover automatically which columns correspond to the key and to the value
+                return this.mapColor( row[1], 
+                                      this.model.where({'id': this.mapMode})[0].get('minValue'), 
+                                      this.model.where({'id': this.mapMode})[0].get('maxValue'), 
+                                      this.model.where({'id': this.mapMode})[0].get('colormap')
+                                    ); 
+              }
+            }
           }
         };
 
         var series = _.map(json.resultset, function (row, rowIdx) {
 
+          var styleMapTemplate = {
+            unselected: {
+              'default': {},
+              'hover'  : {}
+            },
+            selected: {
+              'default': {},
+              'hover'  : {}
+            }
+          };
+
+
+          var styleKeys = _.keys(nodeStyleMap);
+
+          for (var i in styleKeys) {
+
+            var styleMapName = styleKeys[i];
+            var styleTypes = _.keys(nodeStyleMap[styleMapName]);
+            
+            for (var j in styleTypes) {
+             
+              var styleTypeName = styleTypes[j];
+              var attrList = _.keys(nodeStyleMap[styleMapName][styleTypeName]);
+              
+              for (var k in attrList) {
+              
+                var attrName = attrList[k];
+                var attr = nodeStyleMap[styleMapName][styleTypeName][attrName];
+
+                if ( _.isFunction(attr) ) {
+                  //console.log(styleMapName + ' / ' + styleTypeName + ' / ' + attrName);
+                  styleMapTemplate[styleMapName][styleTypeName][attrName] = nodeStyleMap[styleMapName][styleTypeName][attrName].call(me, row, rowIdx);
+                }
+              }
+            }
+          }
+
           return {
             id: row[0],
             label: row[0],
-            styleMap: {
-              unselected: {
-                'default': {
-                }
-              }
-            },
+            styleMap: styleMapTemplate,
             rowIdx: rowIdx,
             rawData: row
           };
 
         });
 
-        console.log(series);
-        return series;
+        //console.log(series);
+        //return series;
+
+        this.model.where({'id': this.mapMode})[0].set({'nodes' : series});
 
         //Build an hashmap from metadata
         //var mapping = this.getMapping(values);
