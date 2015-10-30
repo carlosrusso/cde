@@ -6,15 +6,18 @@ define([
     global: {
       pan: {
         unselected: {
-          normal: {},
+          normal: {
+            fillColor: "#aaa",
+            strokeColor: "#000",
+            fillOpacity: 0.5
+          },
           hover: {
+            fillColor: "#fff"
           }
         },
         selected: {
-          normal: {
-          },
-          hover: {
-          }
+          normal: {},
+          hover: {}
         }
       }
     },
@@ -35,23 +38,14 @@ define([
     shapes: {
       pan: {
         unselected: {
-          normal: {
-            fillOpacity: 0.5,
-            strokeWidth: 2,
-            strokeColor: 'white',
-            zIndex: 0
-          },
+          normal: {},
           hover: {
             strokeWidth: 4
           }
         },
         selected: {
-          normal: {
-            fillColor: 'red'
-          },
-          hover: {
-            strokeWidth: 4
-          }
+          normal: {},
+          hover: {}
         }
       }
     }

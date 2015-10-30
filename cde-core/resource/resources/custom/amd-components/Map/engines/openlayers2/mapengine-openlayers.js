@@ -118,26 +118,71 @@ define([
     },
 
     render: function (model) {
-      this.model = model;
+      //this.model = model;
       var me = this;
-      this.model.where({id: 'markers'}).flatten().reject(function(m){ return m.children(); }).each(function (m) {
-        me._renderMarker(m);
-      });
-      this.model.where({id: 'shapes'}).each(function (m) {
-        me._renderShape(m);
-      });
+
+      //this.model.where({id: 'markers'}).flatten().reject(function(m){ return m.children(); }).each(function (m) {
+      //  me._renderMarker(m);
+      //});
+      //this.model.where({id: 'shapes'}).each(function (m) {
+      //  me._renderShape(m);
+      //});
 
       // this.model.flatten().reject(function(m){ return m.children(); }).each(function (m) {
-      //   m.getType()
-      //     case 'markers':
-      //   }
+
+      //   console.log(m);
+
       // });
+
+      model.flatten().filter(function(m){ return m.children() == null; }).each(function(m){ 
+      
+        // var featureStyle = m.getStyle(); 
+
+        // TODO: achar forma melhor de fazer.
+        // A segunda posicao se refere ao tipo da feature
+        if (m.getFeatureType()[1] == 'shapes') {
+
+          me._renderShape(m);
+
+        }
+
+      }); 
       
     },
 
     _renderShape: function (modelItem) {
+      if (!modelItem) {
+        return;
+      }
+
+      var idx = {
+        key: 0,
+        value: 1
+      };
+
+      var row = modelItem.get('rawData');
+      var data = {
+        rawData: row,
+        key: row[idx.key],
+        value: row[idx.value],
+      };
+
+      var shapeDefinition = modelItem.get('shapeDefinition');
+
+      // TODO: shapeDefinition para 'South Korea' is undefined.
+      // Parece que a regiao existia no resultSet nao tinha a respectiva regiao no .kml
+      if (shapeDefinition != undefined) {
+        var feature = this._geoJSONParser.parseFeature( shapeDefinition );
+        $.extend(true, feature, {
+          data: {
+            data: data
+          },
+        });
+        this.layers.shapes.addFeatures([feature]);
+      }
 
     },
+
     _renderMarker: function (modelItem) {
 
     },
@@ -195,9 +240,9 @@ define([
         },
         data: {
           data: data,
-          //style: shapeStyle
+          style: shapeStyle
         },
-        //style: this.toNativeStyle(shapeStyle)
+        style: this.toNativeStyle(shapeStyle)
       });
       this.layers.shapes.addFeatures([feature]);
     },

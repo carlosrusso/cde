@@ -33,34 +33,37 @@ define([
      * @returns { default: {...}, hover:{...}}
      */
     getStyle: function(){
-      var myStyleMap = $.extend(true, {
-        unselected: {
-          'default': {},
-          hover: {}
-        },
-        selected:{
-          'default': {},
-          hover:{}
-        }
-      }, this.get('styleMap'));
+      var myStyleMap = this.get('styleMap');
 
       var style;
       if (this.parent()) {
         style = this.parent().getStyle();
       } else {
-        style = {
-          'default': {},
-          hover: {}
-        }
+        style = {}
       }
 
-      $.extend(true, style, myStyleMap.unselected);
-      var isSelected = this.get(isSelected) === SelectionStates.ALL;
-      if (isSelected){
-        $.extend(true, style, myStyleMap.selected);
-      }
+      $.extend(true, style, myStyleMap);
+
       return style;
+    },
+
+    getFeatureType: function(){
+
+      return this._getFeatureType([]);
+
+    },
+
+    _getFeatureType: function(list){
+      list.unshift(this.get('id'));
+
+      if (this.parent()) {
+        return this.parent()._getFeatureType(list);
+      } else {
+        return list;
+      }
     }
+
+
   });
 
 

@@ -184,8 +184,6 @@ define([
           value: 1
         };
 
-        this.initModel(json);
-        this.initNodesModel(json);
         //this.mapEngine.render(this.model)
 
         var me = this;
@@ -277,15 +275,17 @@ define([
         var me = this;
 
         var nodeStyleMap = {
-          unselected: {
-            'default': {
-              fillColor: function(row, rowIdx) { 
-                // TODO: Discover automatically which columns correspond to the key and to the value
-                return this.mapColor( row[1], 
-                                      this.model.where({'id': this.mapMode})[0].get('minValue'), 
-                                      this.model.where({'id': this.mapMode})[0].get('maxValue'), 
-                                      this.model.where({'id': this.mapMode})[0].get('colormap')
-                                    ); 
+          'pan': {
+            'unselected': {
+              'normal': {
+                fillColor: function(row, rowIdx) { 
+                  // TODO: Discover automatically which columns correspond to the key and to the value
+                  return this.mapColor( row[1], 
+                                        this.model.where({'id': this.mapMode})[0].get('minValue'), 
+                                        this.model.where({'id': this.mapMode})[0].get('maxValue'), 
+                                        this.model.where({'id': this.mapMode})[0].get('colormap')
+                                      ); 
+                }
               }
             }
           }
@@ -294,47 +294,78 @@ define([
         var series = _.map(json.resultset, function (row, rowIdx) {
 
           var styleMapTemplate = {
-            unselected: {
-              'default': {},
-              'hover'  : {}
+            'pan': {
+              'unselected': {
+                'normal': {},
+                'hover': {}
+              },
+              'selected': {
+                'normal': {},
+                'hover': {}
+              }
             },
-            selected: {
-              'default': {},
-              'hover'  : {}
+            'zoombox': {
+              'unselected': {
+                'normal': {},
+                'hover': {}
+              },
+              'selected': {
+                'normal': {},
+                'hover': {}
+              }
+            },
+            'selection': {
+              'unselected': {
+                'normal': {},
+                'hover': {}
+              },
+              'selected': {
+                'normal': {},
+                'hover': {}
+              }
             }
           };
 
+          var modeKeys = _.keys(nodeStyleMap);
 
-          var styleKeys = _.keys(nodeStyleMap);
+          for (var t in modeKeys) {
 
-          for (var i in styleKeys) {
+            //6500 2002
 
-            var styleMapName = styleKeys[i];
-            var styleTypes = _.keys(nodeStyleMap[styleMapName]);
-            
-            for (var j in styleTypes) {
-             
-              var styleTypeName = styleTypes[j];
-              var attrList = _.keys(nodeStyleMap[styleMapName][styleTypeName]);
+            var modeName = modeKeys[t];
+            var stateKeys = _.keys(nodeStyleMap[modeName]);
+
+            for (var i in stateKeys) {
+
+              var stateName = stateKeys[i];
+              var actionKeys = _.keys(nodeStyleMap[modeName][stateName]);
               
-              for (var k in attrList) {
-              
-                var attrName = attrList[k];
-                var attr = nodeStyleMap[styleMapName][styleTypeName][attrName];
+              for (var j in actionKeys) {
+               
+                var actionName = actionKeys[j];
+                var attrList = _.keys(nodeStyleMap[modeName][stateName][actionName]);
+                
+                for (var k in attrList) {
+                
+                  var attrName = attrList[k];
+                  var attr = nodeStyleMap[modeName][stateName][actionName][attrName];
 
-                if ( _.isFunction(attr) ) {
-                  //console.log(styleMapName + ' / ' + styleTypeName + ' / ' + attrName);
-                  styleMapTemplate[styleMapName][styleTypeName][attrName] = nodeStyleMap[styleMapName][styleTypeName][attrName].call(me, row, rowIdx);
+                  if ( _.isFunction(attr) ) {
+                    //console.log(modeName + ' / ' + stateName + ' / ' + actionName + ' / ' + attrName);
+                    styleMapTemplate[modeName][stateName][actionName][attrName] = nodeStyleMap[modeName][stateName][actionName][attrName].call(me, row, rowIdx);
+                  }
                 }
               }
             }
           }
 
+          var shapeDefinition = me.shapeDefinition ? me.shapeDefinition[row[0]] : undefined;
+
           return {
             id: row[0],
             label: row[0],
             styleMap: styleMapTemplate,
-            shapeDefinition: this.shapeDefinition[row[0]];
+            shapeDefinition: shapeDefinition,
             rowIdx: rowIdx,
             rawData: row
           };
@@ -344,7 +375,8 @@ define([
         //console.log(series);
         //return series;
 
-        this.model.where({'id': this.mapMode})[0].set({'nodes' : series});
+        //this.model.where({'id': this.mapMode})[0].set({'nodes' : series});
+        this.model.where({'id': this.mapMode})[0].add(series);
 
         //Build an hashmap from metadata
         //var mapping = this.getMapping(values);
@@ -516,6 +548,10 @@ define([
       },
 
       render: function (json) {
+
+        this.initModel(json);
+        this.initNodesModel(json);
+
         if (this.shapeDefinition) {
           Logger.log('Loaded ' + _.size(this.shapeDefinition) + ' shapes', 'debug');
         }
@@ -527,14 +563,19 @@ define([
         //centerLongitude = _.isFinite(centerLongitude) ? centerLongitude : -9.15;
 
         this.mapEngine.model = this.model;
-        switch (this.mapMode) {
-          case 'shapes':
-            this.renderShapes(json);
-            break;
-          case 'markers':
-            this.setupMarkers(json);
-            break;
-        }
+
+        this.mapEngine.render(this.model);
+
+        // TODO: ISSO DEVERA SER REMOVIDO QUANDO O RENDER() ACIMA ESTIVER FUNCIONANDO
+        // switch (this.mapMode) {
+        //   case 'shapes':
+        //     this.renderShapes(json);
+        //     break;
+        //   case 'markers':
+        //     this.setupMarkers(json);
+        //     break;
+        // }
+        // TODO: FIM
 
         this.mapEngine.updateViewport(centerLongitude, centerLatitude, this.defaultZoomLevel);
 
@@ -658,16 +699,19 @@ define([
       },
 
       getStyleMap: function (styleName) {
-        switch (styleName){
-          case 'shapes':
-            return _.defaults({
-              pan: {
-                unselected: {
-                  normal: this.shapeSettings
-                }
-              }
-            }, Styles.getStyleMap('shapes'));
-        }
+
+        // TODO: VERIFICAR A ORIGEM DESSE shapeDefinition e como se encaixa nos varios StyleMaps
+
+        // switch (styleName){
+        //   case 'shapes':
+        //     return _.defaults({
+        //       pan: {
+        //         unselected: {
+        //           normal: this.shapeSettings
+        //         }
+        //       }
+        //     }, Styles.getStyleMap('shapes'), Styles.getStyleMap('global'));
+        // }
         return Styles.getStyleMap(styleName);
       },
 
