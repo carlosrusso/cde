@@ -32,7 +32,7 @@ define([
      * Assumes that at each level "hover" applies over default.
      * @returns { default: {...}, hover:{...}}
      */
-    getStyle: function(){
+    getStyle: function(state){
       var myStyleMap = this.get('styleMap');
 
       var style;
@@ -44,7 +44,10 @@ define([
 
       $.extend(true, style, myStyleMap);
 
-      return style;
+      if (state != undefined)
+        return style[state];
+      else
+        return style;
     },
 
     getFeatureType: function(){

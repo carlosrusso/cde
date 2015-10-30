@@ -367,16 +367,16 @@ define([
       var olStyle = new OpenLayers.Style(style, {
         context: {
           fillColor: function (feature) {
-            if (feature.hasOwnProperty('attributes')) {
-              if (feature.attributes.hasOwnProperty('style')) {
-                if (feature.attributes.style.hasOwnProperty('fillColor')) {
-                  return feature.attributes.style.fillColor;
-                }
-              }
-            }
+            // if (feature.hasOwnProperty('attributes')) {
+            //   if (feature.attributes.hasOwnProperty('style')) {
+            //     if (feature.attributes.style.hasOwnProperty('fillColor')) {
+            //       return feature.attributes.style.fillColor;
+            //     }
+            //   }
+            // }
 
-            // Default color
-            return '#999999';
+            // return me.model.where({id : feature.data.data.key})[0].getStyle('pan')['unselected']['normal'].fillColor;
+            return 'blue';
           },
 
           strokeColor: function (feature) {
@@ -385,8 +385,17 @@ define([
         }
       });
 
-      var olOver = new OpenLayers.Style({
-        fillColor: 'red'
+      // var olOver = new OpenLayers.Style({
+      //   fillColor: 'red'
+      // });
+
+      var olOver = new OpenLayers.Style(style, {
+        context: {
+          fillColor: function (feature) {
+            // return me.model.where({id : feature.data.data.key})[0].getStyle('pan')['unselected']['normal'].fillColor;
+            return 'green';
+          }
+        }
       });
 
       var olSelect = new OpenLayers.Style({
