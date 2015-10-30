@@ -18,12 +18,13 @@
 define([
   '../mapengine',
   '../MapComponentAsyncLoader',
+  '../../model/SelectionStates',
   'cdf/Logger',
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
   'cdf/lib/OpenLayers',
   'cdf/lib/OpenStreetMap'
-], function (MapEngine, loadGoogleMaps, Logger, $, _, OpenLayers) {
+], function (MapEngine, loadGoogleMaps, SelectionStates, Logger, $, _, OpenLayers) {
 
   var OpenLayersEngine = MapEngine.extend({
     map: undefined,
@@ -614,7 +615,7 @@ define([
           console.log(e.feature.data.data.key);
 
           var id = e.feature.data.data.key;
-          myself.model.where({id: id})[0].setSelection(true);
+          myself.model.findWhere({id: id}).setSelection(SelectionStates.ALL);
 
           //myself.trigger('shape:click', myself.wrapEvent(e));
         },
@@ -622,7 +623,7 @@ define([
           console.log(e.feature.data.data.key);
 
           var id = e.feature.data.data.key;
-          myself.model.where({id: id})[0].setSelection(false);
+          myself.model.findWhere({id: id}).setSelection(SelectionStates.NONE);
 
           // myself.model.where({id: id}).each(function(m){
           //   m.setSelection(false);
