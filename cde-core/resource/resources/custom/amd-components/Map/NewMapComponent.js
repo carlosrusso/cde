@@ -614,6 +614,7 @@ define([
 
         this.on('shape:mouseover', function (event) {
           // Logger.log('Shape mouseover');
+          return;
           //this.mapEngine.showPopup(event.data,  event.feature, 50, 20, "Hello", undefined, 'red'); //Poor man's popup, only seems to work with OpenLayers
           if (_.isFunction(me.shapeMouseOver)) {
             var result = me.shapeMouseOver(event);
@@ -626,6 +627,7 @@ define([
 
         this.on('shape:mouseout', function (event) {
           //Logger.log('Shape mouseout');
+          return;
           var result = {};
           if (_.isFunction(me.shapeMouseOut)) {
             result = me.shapeMouseOut(event);
@@ -642,13 +644,15 @@ define([
         });
 
         this.on('shape:click', function (event) {
+          me.processChange();
+          return;
           if (_.isFunction(me.shapeMouseClick)) {
             var result = me.shapeMouseClick(event);
             if (result) {
               result = _.isObject(result) ? result : {};
               var selStyle = _.defaults(result, event.style);
-              event.setSelectedStyle(selStyle);
-              event.draw(selStyle);
+              //event.setSelectedStyle(selStyle);
+              //event.draw(selStyle);
             }
           }
         });
