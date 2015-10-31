@@ -25,27 +25,49 @@ define([
       pan: {
         unselected: {
           normal: {
-            pointRadius: 10
+            pointRadius: 10,
+            graphicName: 'circle',
+            label: 'label',
+            labelAlign: 'cm',
+            labelYOffset: -10,
+            fillColor: '#ff0000',
+            strokeColor: '#ffffff',
+            strokeWidth: 3,
+            fillOpacity: 0.9
           },
-          hover: {}
+          hover: {
+            fillColor: 'orange'
+          }
         },
         selected: {
-          normal: {},
-          hover: {}
+          normal: {
+            fillColor: 'red'
+          },
+          hover: {
+            fillColor: 'pink'
+          }
         }
       }
     },
     shapes: {
       pan: {
         unselected: {
-          normal: {},
+          normal: {
+            strokeWidth: 1
+          },
           hover: {
-            strokeWidth: 4
+            strokeWidth: 2,
+            fillColor: 'orange',
+            strokeColor: '#ffffff'
           }
         },
         selected: {
-          normal: {},
-          hover: {}
+          normal: {
+            fillColor: 'red'
+          },
+          hover: {
+            fillColor: 'pink'
+          }
         }
       }
     }
