@@ -119,7 +119,7 @@ define([
     },
 
     render: function (model) {
-      //this.model = model;
+      this.model = model;
       var me = this;
 
       //this.model.where({id: 'markers'}).flatten().reject(function(m){ return m.children(); }).each(function (m) {
@@ -135,20 +135,22 @@ define([
 
       // });
 
-      model.flatten().filter(function(m){ return m.children() == null; }).each(function(m){ 
-      
+      model.flatten().filter(function (m) {
+        return m.children() == null;
+      }).each(function (m) {
+
         // var featureStyle = m.getStyle(); 
 
         // TODO: achar forma melhor de fazer.
         // A segunda posicao se refere ao tipo da feature
         if (m.getFeatureType()[1] == 'shapes') {
-
           me._renderShape(m);
-
+        } else {
+          me._renderMarker(m);
         }
 
-      }); 
-      
+      });
+
     },
 
     _renderShape: function (modelItem) {
@@ -163,21 +165,35 @@ define([
 
       var row = modelItem.get('rawData');
       var data = {
+        model: modelItem,
         rawData: row,
         key: row[idx.key],
-        value: row[idx.value],
+        value: row[idx.value]
       };
 
-      var shapeDefinition = modelItem.get('shapeDefinition');
+      var geoJSON = modelItem.get('geoJSON');
+      var style =  modelItem.getStyle().pan.unselected.normal;
 
-      // TODO: shapeDefinition para 'South Korea' is undefined.
+      // TODO: geoJSON para 'South Korea' is undefined.
       // Parece que a regiao existia no resultSet nao tinha a respectiva regiao no .kml
-      if (shapeDefinition != undefined) {
-        var feature = this._geoJSONParser.parseFeature( shapeDefinition );
+      if (geoJSON !== undefined) {
+        var me = this;
+        // geoJSON is either a promise or a POJO
+        if (_.isFunction(geoJSON.then)) {
+          geoJSON.then(function (feature) {
+            createFeature.call(me, feature, data, style);
+          });
+        } else {
+          createFeature.call(this, geoJSON, data, style);
+        }
+      }
+      function createFeature(geoJSON, data, style) {
+        var feature = this._geoJSONParser.parseFeature(geoJSON);
         $.extend(true, feature, {
           data: {
             data: data
           },
+          style: style
         });
         this.layers.shapes.addFeatures([feature]);
       }
@@ -185,7 +201,44 @@ define([
     },
 
     _renderMarker: function (modelItem) {
+      if (!modelItem) {
+        return;
+      }
 
+      var idx = {
+        key: 0,
+        value: 1
+      };
+
+      var row = modelItem.get('rawData');
+      var data = {
+        model: modelItem,
+        rawData: row,
+        //key: row[idx.key],
+        //value: row[idx.value],
+      };
+
+      var geoJSON = modelItem.get('geoJSON');
+
+      if (geoJSON !== undefined) {
+        if (_.isFunction(geoJSON.then)) {
+          var me = this;
+          geoJSON.then(function (feature) {
+            createFeature.call(me, feature, data);
+          });
+        } else {
+          createFeature.call(this, geoJSON, data);
+        }
+      }
+      function createFeature(geoJSON, data) {
+        var feature = this._geoJSONParser.parseFeature(geoJSON);
+        $.extend(true, feature, {
+          data: {
+            data: data
+          }
+        });
+        this.layers.markers.addFeatures([feature]);
+      }
     },
 
     setMarker: function (markerInfo, description, data) {
@@ -208,7 +261,7 @@ define([
         fillOpacity: 0.9
       };
 
-      if (markerInfo.icon) {
+      if (false && markerInfo.icon) {
         featureOptions = {
           externalGraphic: markerInfo.icon,
           graphicWidth: markerInfo.width,
@@ -520,9 +573,22 @@ define([
         var events = {
           'featurehighlighted': 'mouseover',
           'featureunhighlighted': 'mouseout',
-          'featureselected': 'click'
+          'featureselected': 'click' // does this ever occur?
         };
+
+        var model = e.feature.data.data.model;
+        var styles = {
+          'featurehighlighted': model.getSelection() ? model.getStyle('pan').selected.hover : model.getStyle('pan').unselected.hover,
+          'featureunhighlighted': model.getSelection() ? model.getStyle('pan').selected.normal :model.getStyle('pan').unselected.normal,
+          'featureselected': model.getStyle('pan').selected.normal
+        };
+
         if (events[e.type]) {
+          if (e.type === 'featureselected'){
+            console.log('Feature Selected!');
+          }
+          e.feature.style = styles[e.type];
+          e.feature.layer.drawFeature(e.feature, styles[e.type]);
           myself.trigger(prefix + ':' + events[e.type], myself.wrapEvent(e));
         }
       }
@@ -613,9 +679,11 @@ define([
           // setFeatAtt
           // redraw
           console.log(e.feature.data.data.key);
-
           var id = e.feature.data.data.key;
-          myself.model.findWhere({id: id}).setSelection(SelectionStates.ALL);
+          var model = myself.model.findWhere({id: id});
+          model.setSelection(SelectionStates.ALL);
+          var style = model.getStyle('pan').selected.normal;
+          e.feature.layer.drawFeature(e.feature, style);
 
           //myself.trigger('shape:click', myself.wrapEvent(e));
         },
@@ -623,7 +691,10 @@ define([
           console.log(e.feature.data.data.key);
 
           var id = e.feature.data.data.key;
-          myself.model.findWhere({id: id}).setSelection(SelectionStates.NONE);
+          var model = myself.model.findWhere({id: id});
+          model.setSelection(SelectionStates.NONE);
+          var style = model.getStyle('pan').unselected.normal;
+          e.feature.layer.drawFeature(e.feature, style);
 
           // myself.model.where({id: id}).each(function(m){
           //   m.setSelection(false);

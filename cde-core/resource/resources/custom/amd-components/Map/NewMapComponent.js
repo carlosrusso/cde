@@ -82,7 +82,8 @@ define([
     './Map/model/MapSelectionTree',
     './Map/ControlPanel/ControlPanel',
     './Map/Styles',
-    './Map/ShapeConversion',
+    './Map/resolveShapes',
+    './Map/resolveMarkers',
     './Map/tileServices',
     './Map/ColorMapMixin',
     './Map/ISelector',
@@ -93,7 +94,8 @@ define([
             GoogleMapEngine, OpenLayersEngine,
             MapSelectionTree, ControlPanel,
             Styles,
-            ShapeConversion, _tileServices,
+            resolveShapes, resolveMarkers,
+            _tileServices,
             ColorMapMixin, ISelector,
             MapInputDataHandler) {
 
@@ -187,15 +189,23 @@ define([
         //this.mapEngine.render(this.model)
 
         var me = this;
-        if (this.mapMode == "shapes") {
+        if (this.mapMode === "shapes") {
           var keys = _.pluck(json.resultset, idx.id);
-          this.resolveShapes(this.shapeSource, keys, json)
-            .then(function () {
+          this.resolveShapes(this.shapeResolver, this.shapeSource, keys, json)
+            .then(function (shapeDefinition) {
+              me.shapeDefinition = shapeDefinition;
+              me.render.call(me, json);
+            });
+        } else if (this.mapMode === "markers") {
+          this.resolveMarkers(this.locationResolver, json)
+            .then(function (markerDefinitions) {
+              me.markerDefinitions = markerDefinitions;
               me.render.call(me, json);
             });
         } else {
           this.render(json);
         }
+
       },
 
       initModel: function (json) {
@@ -249,7 +259,7 @@ define([
 
         var qvalues = _.pluck(json.resultset, idx.value);
         var minValue = _.min(qvalues),
-            maxValue = _.max(qvalues);
+          maxValue = _.max(qvalues);
 
         var colormap = this.getColorMap();
 
@@ -264,9 +274,7 @@ define([
         };
         this.model.add(modelTree);
 
-        // Mark selected model items
-        var idList = this.dashboard.getParameterValue(this.parameter);
-        this.setValue(idList);
+
 
       },
 
@@ -274,17 +282,18 @@ define([
 
         var me = this;
 
+        var root = this.model.findWhere({'id': this.mapMode});
         var nodeStyleMap = {
           'pan': {
             'unselected': {
               'normal': {
-                fillColor: function(row, rowIdx) { 
+                fillColor: function (row, rowIdx) {
                   // TODO: Discover automatically which columns correspond to the key and to the value
-                  return this.mapColor( row[1], 
-                                        this.model.where({'id': this.mapMode})[0].get('minValue'), 
-                                        this.model.where({'id': this.mapMode})[0].get('maxValue'), 
-                                        this.model.where({'id': this.mapMode})[0].get('colormap')
-                                      ); 
+                  return this.mapColor(row[1],
+                    root.get('minValue'),
+                    root.get('maxValue'),
+                    root.get('colormap')
+                  );
                 }
               }
             }
@@ -292,7 +301,23 @@ define([
         };
 
         var series = _.map(json.resultset, function (row, rowIdx) {
+          var id = row[0];
+          var styleMap = {};
 
+          _.each(nodeStyleMap, function (modeStyle, mode) {
+            _.each(modeStyle, function (stateStyle, state) {
+              _.each(stateStyle, function (actionStyle, action) {
+                _.each(actionStyle, function (value, attr) {
+                  styleMap[mode] = styleMap[mode] || {};
+                  styleMap[mode][state] = styleMap[mode][state] || {};
+                  styleMap[mode][state][action] = styleMap[mode][state][action] || {};
+                  styleMap[mode][state][action][attr] = _.isFunction(value) ? value.call(me, row, rowIdx) : value;
+                })
+              });
+            });
+          });
+
+/*
           var styleMapTemplate = {
             'pan': {
               'unselected': {
@@ -325,7 +350,6 @@ define([
               }
             }
           };
-
           var modeKeys = _.keys(nodeStyleMap);
 
           for (var t in modeKeys) {
@@ -339,18 +363,18 @@ define([
 
               var stateName = stateKeys[i];
               var actionKeys = _.keys(nodeStyleMap[modeName][stateName]);
-              
+
               for (var j in actionKeys) {
-               
+
                 var actionName = actionKeys[j];
                 var attrList = _.keys(nodeStyleMap[modeName][stateName][actionName]);
-                
+
                 for (var k in attrList) {
-                
+
                   var attrName = attrList[k];
                   var attr = nodeStyleMap[modeName][stateName][actionName][attrName];
 
-                  if ( _.isFunction(attr) ) {
+                  if (_.isFunction(attr)) {
                     //console.log(modeName + ' / ' + stateName + ' / ' + actionName + ' / ' + attrName);
                     styleMapTemplate[modeName][stateName][actionName][attrName] = nodeStyleMap[modeName][stateName][actionName][attrName].call(me, row, rowIdx);
                   }
@@ -358,14 +382,16 @@ define([
               }
             }
           }
-
-          var shapeDefinition = me.shapeDefinition ? me.shapeDefinition[row[0]] : undefined;
+          */
+          var shapeDefinition = me.shapeDefinition ? me.shapeDefinition[id] : undefined;
+          var markerDefinition = me.markerDefinitions ? me.markerDefinitions[id] : undefined;
+          var geoJSON = me.mapMode === 'shapes' ? shapeDefinition : markerDefinition;
 
           return {
-            id: row[0],
-            label: row[0],
-            styleMap: styleMapTemplate,
-            shapeDefinition: shapeDefinition,
+            id: id,
+            label: id,
+            styleMap: styleMap,
+            geoJSON: geoJSON,
             rowIdx: rowIdx,
             rawData: row
           };
@@ -376,7 +402,7 @@ define([
         //return series;
 
         //this.model.where({'id': this.mapMode})[0].set({'nodes' : series});
-        this.model.where({'id': this.mapMode})[0].add(series);
+        this.model.findWhere({'id': this.mapMode}).add(series);
 
         //Build an hashmap from metadata
         //var mapping = this.getMapping(values);
@@ -416,42 +442,8 @@ define([
 
       },
 
-      resolveShapes: function (url, keys, json) {
-        var addIn = this.getAddIn('ShapeResolver', this.shapeResolver);
-        if (!addIn && this.shapeSource) {
-          if (this.shapeSource.endsWith('json') || this.shapeSource.endsWith('js')) {
-            addIn = this.getAddIn('ShapeResolver', 'simpleJSON');
-          } else {
-            addIn = this.getAddIn('ShapeResolver', 'kml');
-          }
-        }
-        var deferred = $.Deferred();
-        if (!addIn) {
-          deferred.resolve({});
-          return deferred.promise();
-        }
-
-        var tgt = this,
-          st = {
-            keys: keys,
-            tableData: json,
-            _simplifyPoints: ShapeConversion.simplifyPoints,
-            _parseShapeKey: this.parseShapeKey,
-            _shapeSource: url
-          };
-        var promise = addIn.call(tgt, st, this.getAddInOptions('ShapeResolver', addIn.getName()));
-        var me = this;
-        promise.then(function (result) {
-          me.shapeDefinition = _.chain(result)
-            .map(function (geoJSONFeature, key) {
-              return [key, geoJSONFeature]; //decode geojson to native format
-            })
-            .object()
-            .value();
-          deferred.resolve(result);
-        });
-        return deferred.promise();
-      },
+      resolveShapes: resolveShapes,
+      resolveMarkers: resolveMarkers,
 
       init: function () {
         //var inputOptions = {};
@@ -542,7 +534,7 @@ define([
           }
         });
 
-        this.listenTo(this.controlPanel, 'selection:complete', function(){
+        this.listenTo(this.controlPanel, 'selection:complete', function () {
           me.processChange();
         });
       },
@@ -551,6 +543,10 @@ define([
 
         this.initModel(json);
         this.initNodesModel(json);
+
+        // Mark selected model items
+        var idList = this.dashboard.getParameterValue(this.parameter);
+        this.setValue(idList);
 
         if (this.shapeDefinition) {
           Logger.log('Loaded ' + _.size(this.shapeDefinition) + ' shapes', 'debug');
@@ -562,21 +558,8 @@ define([
         //centerLatitude = _.isFinite(centerLatitude) ? centerLatitude : 38.471;
         //centerLongitude = _.isFinite(centerLongitude) ? centerLongitude : -9.15;
 
-        this.mapEngine.model = this.model;
 
         this.mapEngine.render(this.model);
-
-        // TODO: ISSO DEVERA SER REMOVIDO QUANDO O RENDER() ACIMA ESTIVER FUNCIONANDO
-        // switch (this.mapMode) {
-        //   case 'shapes':
-        //     this.renderShapes(json);
-        //     break;
-        //   case 'markers':
-        //     this.setupMarkers(json);
-        //     break;
-        // }
-        // TODO: FIM
-
         this.mapEngine.updateViewport(centerLongitude, centerLatitude, this.defaultZoomLevel);
 
 
@@ -594,6 +577,7 @@ define([
          */
         var me = this;
         this.on('marker:click', function (event) {
+          return;
           var result;
           if (_.isFunction(me.markerClickFunction)) {
             result = me.markerClickFunction(event);
@@ -658,6 +642,7 @@ define([
         });
       },
 
+        /*
       renderShapes: function (json) {
         if (!this.shapeDefinition) {
           return;
@@ -702,6 +687,8 @@ define([
         });
       },
 
+      */
+
       getStyleMap: function (styleName) {
 
         // TODO: VERIFICAR A ORIGEM DESSE shapeDefinition e como se encaixa nos varios StyleMaps
@@ -718,26 +705,93 @@ define([
         // }
         return Styles.getStyleMap(styleName);
       },
-
+/*
       setupMarkers: function (json) {
         if (!json || !json.resultset)
           return;
 
         //Build an hashmap from metadata
         var mapping = this.getMapping(json);
-        var myself = this;
-        if (mapping.addressType != 'coordinates') {
-          _.each(json.resultset, function (row, rowIdx) {
-            var address = mapping.address != undefined ? row[mapping.address] : undefined;
-            myself.getAddressLocation(address, mapping.addressType, row, mapping, rowIdx);
-          });
-        } else {
-          _.each(json.resultset, function (row, rowIdx) {
-            var location = [row[mapping.longitude], row[mapping.latitude]];
-            myself.renderMarker(location, row, mapping, rowIdx);
-          });
-        }
+        var me = this;
 
+        _.each(json.resultset, function (row, rowIdx) {
+          var id = row[0];
+          var markerDef = me.markerDefinitions[id];
+          if (_.isFunction(markerDef.then)) {
+            markerDef.then(function (feature) {
+              me.renderMarker(feature.geometry.coordinates, row, mapping, rowIdx);
+            });
+          } else {
+            me.renderMarker(markerDef.geometry.coordinates, row, mapping, rowIdx);
+          }
+        });
+      },
+
+
+      getMapping: function (json) {
+        var map = {};
+
+        if (!json.metadata || json.metadata.length == 0)
+          return map;
+
+        //Iterate through the metadata. We are looking for the following columns:
+        // * address or one or more of 'Country', 'State', 'Region', 'County', 'City'
+        // * latitude and longitude - if found, we no longer care for address
+        // * description - Description to show on mouseover
+        // * marker - Marker image to use - usually this will be an url
+        // * markerWidth - Width of the marker
+        // * markerHeight - Height of the marker
+        // * popupContents - Contents to show on popup window
+        // * popupWidth - Width of the popup window
+        // * popupHeight - Height of the popup window
+
+        _.each(json.metadata, function (elt, i) {
+
+          switch (elt.colName.toLowerCase()) {
+            case 'latitude':
+              map.addressType = 'coordinates';
+              map.latitude = i;
+              break;
+            case 'longitude':
+              map.addressType = 'coordinates';
+              map.longitude = i;
+              break;
+            case 'description':
+              map.description = i;
+              break;
+            case 'marker':
+              map.marker = i;
+              break;
+            case 'markerwidth':
+              map.markerWidth = i;
+              break;
+            case 'markerheight':
+              map.markerHeight = i;
+              break;
+            case 'popupcontents':
+              map.popupContents = i;
+              break;
+            case 'popupwidth':
+              map.popupWidth = i;
+              break;
+            case 'popupheight':
+              map.popupHeight = i;
+              break;
+            case 'address':
+              if (!map.addressType) {
+                map.address = i;
+                map.addressType = 'address';
+              }
+              break;
+            default:
+              map[elt.colName.toLowerCase()] = i;
+              break;
+            // if ($.inArray(values.metadata[0].colName, ['Country', 'State', 'Region', 'County', 'City'])) {
+          }
+
+        });
+
+        return map;
       },
 
       renderMarker: function (location, row, mapping, position) {
@@ -813,7 +867,7 @@ define([
         Logger.log('About to render ' + markerInfo.longitude + ' / ' + markerInfo.latitude + ' with marker sized ' + markerHeight + ' / ' + markerWidth + 'and description ' + description, 'debug');
         myself.mapEngine.setMarker(markerInfo, description, row);
       },
-
+*/
       markerClickCallback: function (event) {
         var elt = event.data;
         var defaultMarkers = event.marker.defaultMarkers;
@@ -840,100 +894,6 @@ define([
           }
           this.mapEngine.showPopup(event.data, event.feature, height, width, contents, this.popupContentsDiv, borderColor);
         }
-      },
-
-
-      getAddressLocation: function (address, addressType, data, mapping, position) {
-
-        var addinName = this.locationResolver || 'openstreetmap';
-        var addIn = this.getAddIn("LocationResolver", addinName);
-
-        var state = {
-          data: data,
-          position: position,
-          address: address,
-          addressType: addressType
-        };
-
-        var props = ['country', 'city', 'county', 'region', 'state'];
-        _.each(_.pick(mapping, props), function (mappingProp, prop) {
-          if (mappingProp != undefined) {
-            state[prop] = data[mappingProp];
-          }
-        });
-
-        var myself = this;
-        state.continuationFunction = function (location) {
-          myself.renderMarker(location, data, mapping, position);
-        };
-        var target = this.placeholder();
-        addIn.call(target, state, this.getAddInOptions("LocationResolver", addIn.getName()));
-      },
-
-      getMapping: function (json) {
-        var map = {};
-
-        if (!json.metadata || json.metadata.length == 0)
-          return map;
-
-        //Iterate through the metadata. We are looking for the following columns:
-        // * address or one or more of 'Country', 'State', 'Region', 'County', 'City'
-        // * latitude and longitude - if found, we no longer care for address
-        // * description - Description to show on mouseover
-        // * marker - Marker image to use - usually this will be an url
-        // * markerWidth - Width of the marker
-        // * markerHeight - Height of the marker
-        // * popupContents - Contents to show on popup window
-        // * popupWidth - Width of the popup window
-        // * popupHeight - Height of the popup window
-
-        _.each(json.metadata, function (elt, i) {
-
-          switch (elt.colName.toLowerCase()) {
-            case 'latitude':
-              map.addressType = 'coordinates';
-              map.latitude = i;
-              break;
-            case 'longitude':
-              map.addressType = 'coordinates';
-              map.longitude = i;
-              break;
-            case 'description':
-              map.description = i;
-              break;
-            case 'marker':
-              map.marker = i;
-              break;
-            case 'markerwidth':
-              map.markerWidth = i;
-              break;
-            case 'markerheight':
-              map.markerHeight = i;
-              break;
-            case 'popupcontents':
-              map.popupContents = i;
-              break;
-            case 'popupwidth':
-              map.popupWidth = i;
-              break;
-            case 'popupheight':
-              map.popupHeight = i;
-              break;
-            case 'address':
-              if (!map.addressType) {
-                map.address = i;
-                map.addressType = 'address';
-              }
-              break;
-            default:
-              map[elt.colName.toLowerCase()] = i;
-              break;
-            // if ($.inArray(values.metadata[0].colName, ['Country', 'State', 'Region', 'County', 'City'])) {
-          }
-
-        });
-
-        return map;
       }
 
 

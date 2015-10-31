@@ -70,14 +70,23 @@ define([
         };
       }
 
-      var success = function(result) {
+      var onSuccess = function(result) {
         if(result && result.length > 0) {
           var location = [parseFloat(result[0].lon),
                           parseFloat(result[0].lat)];
           st.continuationFunction(location);
         }
       };
-      $.getJSON(opt.url, $.extend({}, opt.serviceParams, params), success);
+      var onError = function(){
+        st.continuationFunction(null);
+      };
+      return $.ajax({
+        dataType: "json",
+        url: opt.url,
+        data: $.extend({}, opt.serviceParams, params),
+        success: onSuccess,
+        error: onError
+      });
 
 
     }
