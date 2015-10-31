@@ -282,17 +282,17 @@ define([
 
         var me = this;
 
-        var root = this.model.findWhere({'id': this.mapMode});
-        var nodeStyleMap = {
+        var seriesRoot = this.model.findWhere({'id': this.mapMode});
+        var attributeMap = {
           'pan': {
             'unselected': {
               'normal': {
                 fillColor: function (row, rowIdx) {
                   // TODO: Discover automatically which columns correspond to the key and to the value
                   return this.mapColor(row[1],
-                    root.get('minValue'),
-                    root.get('maxValue'),
-                    root.get('colormap')
+                    seriesRoot.get('minValue'),
+                    seriesRoot.get('maxValue'),
+                    seriesRoot.get('colormap')
                   );
                 }
               }
@@ -304,7 +304,7 @@ define([
           var id = row[0];
           var styleMap = {};
 
-          _.each(nodeStyleMap, function (modeStyle, mode) {
+          _.each(attributeMap, function (modeStyle, mode) {
             _.each(modeStyle, function (stateStyle, state) {
               _.each(stateStyle, function (actionStyle, action) {
                 _.each(actionStyle, function (value, attr) {
@@ -385,7 +385,7 @@ define([
            */
           var shapeDefinition = me.shapeDefinition ? me.shapeDefinition[id] : undefined;
           var markerDefinition = me.markerDefinitions ? me.markerDefinitions[id] : undefined;
-          var geoJSON = me.mapMode === 'shapes' ? shapeDefinition : markerDefinition;
+          var geoJSON = (me.mapMode === 'shapes') ? shapeDefinition : markerDefinition;
 
           return {
             id: id,
@@ -402,7 +402,7 @@ define([
         //return series;
 
         //this.model.where({'id': this.mapMode})[0].set({'nodes' : series});
-        this.model.findWhere({'id': this.mapMode}).add(series);
+        seriesRoot.add(series);
 
         //Build an hashmap from metadata
         //var mapping = this.getMapping(values);
@@ -478,24 +478,6 @@ define([
         }, this));
       },
 
-      _relayEvents: function () {
-        var engine = this.mapEngine;
-        var component = this;
-        var events = [
-          'marker:click', 'marker:mouseover', 'marker:mouseout',
-          'shape:click', 'shape:mouseover', 'shape:mouseout'
-        ];
-        _.each(events, function (event) {
-          component.listenTo(engine, event, function () {
-            var args = _.union([event], arguments);
-            component.trigger.apply(component, args);
-          });
-        });
-
-      },
-
-
-
       _initControlPanel: function () {
         var $controlPanel = $('<div class="map-controls" />').appendTo(this.ph);
         this.controlPanel = new ControlPanel($controlPanel);
@@ -548,6 +530,23 @@ define([
         this.maybeToggleBlock(false);
 
         Logger.log('Stopping clock: update cycle of ' + this.htmlObject + ' took ' + (new Date() - this.clock) + ' ms', 'debug');
+      },
+
+
+      _relayEvents: function () {
+        var engine = this.mapEngine;
+        var component = this;
+        var events = [
+          'marker:click', 'marker:mouseover', 'marker:mouseout',
+          'shape:click', 'shape:mouseover', 'shape:mouseout'
+        ];
+        _.each(events, function (event) {
+          component.listenTo(engine, event, function () {
+            var args = _.union([event], arguments);
+            component.trigger.apply(component, args);
+          });
+        });
+
       },
 
       _registerEvents: function () {
@@ -685,7 +684,7 @@ define([
         return Styles.getStyleMap(styleName);
       },
 
-      renderMarker: function (location, row, mapping, position) {
+      _renderMarker: function (location, row, mapping, position) {
         var myself = this;
         if (location === undefined) {
           Logger.log('Unable to get location for address ' + row[mapping.address] + '. Ignoring element.', 'debug');
