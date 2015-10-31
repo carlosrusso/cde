@@ -59,23 +59,36 @@ define([
 
 
     toNativeStyle: function (foreignStyle) {
+      var conversionTable = {
+        // SVG standard attributes : OpenLayers2 attributes
+        'fill': 'fillColor',
+        'stroke': 'strokeColor',
+        //Backwards compatibility
+        'fillColor': 'fillColor',
+        'fillOpacity': 'fillOpacity',
+        'strokeColor': 'strokeColor',
+        'strokeOpacity': 'strokeOpacity',
+        'strokeWidth': 'strokeWidth',
+        'zIndex': 'graphicZIndex'
+      };
       var validStyle = {};
       _.each(foreignStyle, function (value, key) {
-        switch (key) {
-          case 'visible':
-            validStyle['display'] = value ? true : 'none';
-            break;
-          case 'zIndex':
-            validStyle['graphicZIndex'] = value;
-            break;
-          case 'fillColor':
-          case 'fillOpacity':
-          case 'strokeColor':
-          case 'strokeOpacity':
-          case 'strokeWidth':
-            validStyle[key] = value;
+        var nativeKey = conversionTable[key];
+        if (nativeKey) {
+          validStyle[nativeKey] = value;
+        } else {
+          switch (key) {
+            case 'visible':
+              validStyle['display'] = value ? true : 'none';
+              break;
+            default:
+              // be permissive about the validation
+              validStyle[key] = value;
+              break
+          }
         }
       });
+      console.log('foreign vs valid:', foreignStyle, validStyle);
       return validStyle;
     },
 
@@ -153,16 +166,21 @@ define([
 
     },
 
+    _renderMarker: function (modelItem) {
+      var row = modelItem.get('rawData');
+      var data = {
+        model: modelItem,
+        rawData: row
+        //key: row[idx.key],
+        //value: row[idx.value],
+      };
+      this._renderItem(modelItem, data, this.layers.markers);
+    },
     _renderShape: function (modelItem) {
-      if (!modelItem) {
-        return;
-      }
-
       var idx = {
         key: 0,
         value: 1
       };
-
       var row = modelItem.get('rawData');
       var data = {
         model: modelItem,
@@ -170,75 +188,32 @@ define([
         key: row[idx.key],
         value: row[idx.value]
       };
-
-      var geoJSON = modelItem.get('geoJSON');
-      var style =  modelItem.getStyle().pan.unselected.normal;
-
-      // TODO: geoJSON para 'South Korea' is undefined.
-      // Parece que a regiao existia no resultSet nao tinha a respectiva regiao no .kml
-      if (geoJSON !== undefined) {
-        var me = this;
-        // geoJSON is either a promise or a POJO
-        if (_.isFunction(geoJSON.then)) {
-          geoJSON.then(function (feature) {
-            createFeature.call(me, feature, data, style);
-          });
-        } else {
-          createFeature.call(this, geoJSON, data, style);
-        }
-      }
-      function createFeature(geoJSON, data, style) {
-        var feature = this._geoJSONParser.parseFeature(geoJSON);
-        $.extend(true, feature, {
-          data: {
-            data: data
-          },
-          style: style
-        });
-        this.layers.shapes.addFeatures([feature]);
-      }
-
+      this._renderItem(modelItem, data, this.layers.shapes);
     },
 
-    _renderMarker: function (modelItem) {
+    _renderItem: function (modelItem, data, layer) {
       if (!modelItem) {
         return;
       }
 
-      var idx = {
-        key: 0,
-        value: 1
-      };
-
-      var row = modelItem.get('rawData');
-      var data = {
-        model: modelItem,
-        rawData: row,
-        //key: row[idx.key],
-        //value: row[idx.value],
-      };
-
       var geoJSON = modelItem.get('geoJSON');
-
-      if (geoJSON !== undefined) {
-        if (_.isFunction(geoJSON.then)) {
-          var me = this;
-          geoJSON.then(function (feature) {
-            createFeature.call(me, feature, data);
-          });
-        } else {
-          createFeature.call(this, geoJSON, data);
+      var me = this;
+      $.when(geoJSON).then(function (feature) {
+        if (!feature) {
+          return;
         }
-      }
-      function createFeature(geoJSON, data) {
-        var feature = this._geoJSONParser.parseFeature(geoJSON);
-        $.extend(true, feature, {
+        var f = me._geoJSONParser.parseFeature(feature);
+        var selectionState = (modelItem.getSelection() === SelectionStates.ALL) ? 'selected' : 'unselected';
+        var style = modelItem.getStyle().pan[selectionState].normal;
+        $.extend(true, f, {
           data: {
             data: data
-          }
+          },
+          style: me.toNativeStyle(style)
         });
-        this.layers.markers.addFeatures([feature]);
-      }
+        layer.addFeatures([f]);
+      });
+
     },
 
     setMarker: function (markerInfo, description, data) {
@@ -579,12 +554,12 @@ define([
         var model = e.feature.data.data.model;
         var styles = {
           'featurehighlighted': model.getSelection() ? model.getStyle('pan').selected.hover : model.getStyle('pan').unselected.hover,
-          'featureunhighlighted': model.getSelection() ? model.getStyle('pan').selected.normal :model.getStyle('pan').unselected.normal,
+          'featureunhighlighted': model.getSelection() ? model.getStyle('pan').selected.normal : model.getStyle('pan').unselected.normal,
           'featureselected': model.getStyle('pan').selected.normal
         };
 
         if (events[e.type]) {
-          if (e.type === 'featureselected'){
+          if (e.type === 'featureselected') {
             console.log('Feature Selected!');
           }
           e.feature.style = styles[e.type];
