@@ -194,6 +194,7 @@ define([
           this.resolveShapes(this.shapeResolver, this.shapeSource, keys, json)
             .then(function (shapeDefinition) {
               me.shapeDefinition = shapeDefinition;
+              Logger.log('Loaded ' + _.size(me.shapeDefinition) + ' shapes', 'debug');
               me.render.call(me, json);
             });
         } else if (this.mapMode === "markers") {
@@ -275,7 +276,6 @@ define([
         this.model.add(modelTree);
 
 
-
       },
 
       initNodesModel: function (json) {
@@ -317,72 +317,72 @@ define([
             });
           });
 
-/*
-          var styleMapTemplate = {
-            'pan': {
-              'unselected': {
-                'normal': {},
-                'hover': {}
-              },
-              'selected': {
-                'normal': {},
-                'hover': {}
-              }
-            },
-            'zoombox': {
-              'unselected': {
-                'normal': {},
-                'hover': {}
-              },
-              'selected': {
-                'normal': {},
-                'hover': {}
-              }
-            },
-            'selection': {
-              'unselected': {
-                'normal': {},
-                'hover': {}
-              },
-              'selected': {
-                'normal': {},
-                'hover': {}
-              }
-            }
-          };
-          var modeKeys = _.keys(nodeStyleMap);
+          /*
+           var styleMapTemplate = {
+           'pan': {
+           'unselected': {
+           'normal': {},
+           'hover': {}
+           },
+           'selected': {
+           'normal': {},
+           'hover': {}
+           }
+           },
+           'zoombox': {
+           'unselected': {
+           'normal': {},
+           'hover': {}
+           },
+           'selected': {
+           'normal': {},
+           'hover': {}
+           }
+           },
+           'selection': {
+           'unselected': {
+           'normal': {},
+           'hover': {}
+           },
+           'selected': {
+           'normal': {},
+           'hover': {}
+           }
+           }
+           };
+           var modeKeys = _.keys(nodeStyleMap);
 
-          for (var t in modeKeys) {
+           for (var t in modeKeys) {
 
-            //6500 2002
+           //6500 2002
 
-            var modeName = modeKeys[t];
-            var stateKeys = _.keys(nodeStyleMap[modeName]);
+           var modeName = modeKeys[t];
+           var stateKeys = _.keys(nodeStyleMap[modeName]);
 
-            for (var i in stateKeys) {
+           for (var i in stateKeys) {
 
-              var stateName = stateKeys[i];
-              var actionKeys = _.keys(nodeStyleMap[modeName][stateName]);
+           var stateName = stateKeys[i];
+           var actionKeys = _.keys(nodeStyleMap[modeName][stateName]);
 
-              for (var j in actionKeys) {
+           for (var j in actionKeys) {
 
-                var actionName = actionKeys[j];
-                var attrList = _.keys(nodeStyleMap[modeName][stateName][actionName]);
+           var actionName = actionKeys[j];
+           var attrList = _.keys(nodeStyleMap[modeName][stateName][actionName]);
 
-                for (var k in attrList) {
+           for (var k in attrList) {
 
-                  var attrName = attrList[k];
-                  var attr = nodeStyleMap[modeName][stateName][actionName][attrName];
+           var attrName = attrList[k];
+           var attr = nodeStyleMap[modeName][stateName][actionName][attrName];
 
-                  if (_.isFunction(attr)) {
-                    //console.log(modeName + ' / ' + stateName + ' / ' + actionName + ' / ' + attrName);
-                    styleMapTemplate[modeName][stateName][actionName][attrName] = nodeStyleMap[modeName][stateName][actionName][attrName].call(me, row, rowIdx);
-                  }
-                }
-              }
-            }
-          }
-          */
+           if (_.isFunction(attr)) {
+           //console.log(modeName + ' / ' + stateName + ' / ' + actionName + ' / ' + attrName);
+           styleMapTemplate[modeName][stateName][actionName][attrName] = nodeStyleMap[modeName][stateName][actionName][attrName].call(me, row, rowIdx);
+           }
+           }
+           }
+           }
+           }
+           */
           var shapeDefinition = me.shapeDefinition ? me.shapeDefinition[id] : undefined;
           var markerDefinition = me.markerDefinitions ? me.markerDefinitions[id] : undefined;
           var geoJSON = me.mapMode === 'shapes' ? shapeDefinition : markerDefinition;
@@ -469,19 +469,12 @@ define([
           tileServicesOptions: this.tileServicesOptions
         });
         return this.mapEngine.init(this.tilesets).then(_.bind(function () {
-
           this.ph = this.placeholder();
           this.ph.empty(); //clear();
           this._initControlPanel();
-
           this._initPopup();
-
-          //var $map = $('<div class="map-content" />').appendTo(this.ph);
-
           this._relayEvents();
           this.mapEngine.renderMap(this.ph[0]);
-
-
         }, this));
       },
 
@@ -501,14 +494,7 @@ define([
 
       },
 
-      _initPopup: function () {
-        var $popupContentsDiv = $("#" + this.popupContentsDiv);
-        var $popupDivHolder = $popupContentsDiv.clone();
-        //after first render, the popupContentsDiv gets moved inside ph, it will be discarded above, make sure we re-add him
-        if (this.popupContentsDiv && $popupContentsDiv.length != 1) {
-          this.ph.append($popupDivHolder.html("None"));
-        }
-      },
+
 
       _initControlPanel: function () {
         var $controlPanel = $('<div class="map-controls" />').appendTo(this.ph);
@@ -548,16 +534,9 @@ define([
         var idList = this.dashboard.getParameterValue(this.parameter);
         this.setValue(idList);
 
-        if (this.shapeDefinition) {
-          Logger.log('Loaded ' + _.size(this.shapeDefinition) + ' shapes', 'debug');
-        }
 
         var centerLatitude = parseFloat(this.centerLatitude);
         var centerLongitude = parseFloat(this.centerLongitude);
-
-        //centerLatitude = _.isFinite(centerLatitude) ? centerLatitude : 38.471;
-        //centerLongitude = _.isFinite(centerLongitude) ? centerLongitude : -9.15;
-
 
         this.mapEngine.render(this.model);
         this.mapEngine.updateViewport(centerLongitude, centerLatitude, this.defaultZoomLevel);
@@ -642,52 +621,52 @@ define([
         });
       },
 
-        /*
-      renderShapes: function (json) {
-        if (!this.shapeDefinition) {
-          return;
-        }
-        if (!json || !json.resultset) {
-          return;
-        }
+      /*
+       renderShapes: function (json) {
+       if (!this.shapeDefinition) {
+       return;
+       }
+       if (!json || !json.resultset) {
+       return;
+       }
 
-        //Build an hashmap from metadata
-        //var mapping = this.getMapping(values);
-        //TODO: Discover automatically which columns correspond to the key and to the value
-        var idx = {
-          key: 0,
-          value: 1
-        };
+       //Build an hashmap from metadata
+       //var mapping = this.getMapping(values);
+       //TODO: Discover automatically which columns correspond to the key and to the value
+       var idx = {
+       key: 0,
+       value: 1
+       };
 
-        var defaultShapeStyle = this.getStyleMap('shapes').pan.unselected.default;
+       var defaultShapeStyle = this.getStyleMap('shapes').pan.unselected.default;
 
-        // Attribute a color each shape
-        var colormap = this.getColorMap();
-        var qvalues = _.pluck(json.resultset, idx.value);
-        var minValue = _.min(qvalues),
-          maxValue = _.max(qvalues);
+       // Attribute a color each shape
+       var colormap = this.getColorMap();
+       var qvalues = _.pluck(json.resultset, idx.value);
+       var minValue = _.min(qvalues),
+       maxValue = _.max(qvalues);
 
-        var me = this;
-        _.each(json.resultset, function (row) {
+       var me = this;
+       _.each(json.resultset, function (row) {
 
-          var shapeDefinition = me.shapeDefinition[row[idx.key]];
-          var fillColor = me.mapColor(row[idx.value], minValue, maxValue, colormap);
-          var shapeStyle = _.defaults({
-            fillColor: fillColor
-          }, defaultShapeStyle);
-          var data = {
-            rawData: row,
-            key: row[idx.key],
-            value: row[idx.value],
-            minValue: minValue,
-            maxValue: maxValue
-          };
+       var shapeDefinition = me.shapeDefinition[row[idx.key]];
+       var fillColor = me.mapColor(row[idx.value], minValue, maxValue, colormap);
+       var shapeStyle = _.defaults({
+       fillColor: fillColor
+       }, defaultShapeStyle);
+       var data = {
+       rawData: row,
+       key: row[idx.key],
+       value: row[idx.value],
+       minValue: minValue,
+       maxValue: maxValue
+       };
 
-          me.mapEngine.setShape(shapeDefinition, shapeStyle, data);
-        });
-      },
+       me.mapEngine.setShape(shapeDefinition, shapeStyle, data);
+       });
+       },
 
-      */
+       */
 
       getStyleMap: function (styleName) {
 
@@ -704,94 +683,6 @@ define([
         //     }, Styles.getStyleMap('shapes'), Styles.getStyleMap('global'));
         // }
         return Styles.getStyleMap(styleName);
-      },
-/*
-      setupMarkers: function (json) {
-        if (!json || !json.resultset)
-          return;
-
-        //Build an hashmap from metadata
-        var mapping = this.getMapping(json);
-        var me = this;
-
-        _.each(json.resultset, function (row, rowIdx) {
-          var id = row[0];
-          var markerDef = me.markerDefinitions[id];
-          if (_.isFunction(markerDef.then)) {
-            markerDef.then(function (feature) {
-              me.renderMarker(feature.geometry.coordinates, row, mapping, rowIdx);
-            });
-          } else {
-            me.renderMarker(markerDef.geometry.coordinates, row, mapping, rowIdx);
-          }
-        });
-      },
-
-
-      getMapping: function (json) {
-        var map = {};
-
-        if (!json.metadata || json.metadata.length == 0)
-          return map;
-
-        //Iterate through the metadata. We are looking for the following columns:
-        // * address or one or more of 'Country', 'State', 'Region', 'County', 'City'
-        // * latitude and longitude - if found, we no longer care for address
-        // * description - Description to show on mouseover
-        // * marker - Marker image to use - usually this will be an url
-        // * markerWidth - Width of the marker
-        // * markerHeight - Height of the marker
-        // * popupContents - Contents to show on popup window
-        // * popupWidth - Width of the popup window
-        // * popupHeight - Height of the popup window
-
-        _.each(json.metadata, function (elt, i) {
-
-          switch (elt.colName.toLowerCase()) {
-            case 'latitude':
-              map.addressType = 'coordinates';
-              map.latitude = i;
-              break;
-            case 'longitude':
-              map.addressType = 'coordinates';
-              map.longitude = i;
-              break;
-            case 'description':
-              map.description = i;
-              break;
-            case 'marker':
-              map.marker = i;
-              break;
-            case 'markerwidth':
-              map.markerWidth = i;
-              break;
-            case 'markerheight':
-              map.markerHeight = i;
-              break;
-            case 'popupcontents':
-              map.popupContents = i;
-              break;
-            case 'popupwidth':
-              map.popupWidth = i;
-              break;
-            case 'popupheight':
-              map.popupHeight = i;
-              break;
-            case 'address':
-              if (!map.addressType) {
-                map.address = i;
-                map.addressType = 'address';
-              }
-              break;
-            default:
-              map[elt.colName.toLowerCase()] = i;
-              break;
-            // if ($.inArray(values.metadata[0].colName, ['Country', 'State', 'Region', 'County', 'City'])) {
-          }
-
-        });
-
-        return map;
       },
 
       renderMarker: function (location, row, mapping, position) {
@@ -867,7 +758,20 @@ define([
         Logger.log('About to render ' + markerInfo.longitude + ' / ' + markerInfo.latitude + ' with marker sized ' + markerHeight + ' / ' + markerWidth + 'and description ' + description, 'debug');
         myself.mapEngine.setMarker(markerInfo, description, row);
       },
-*/
+
+      /**
+       * Legacy stuff I'd like to delete
+       */
+
+
+      _initPopup: function () {
+        var $popupContentsDiv = $("#" + this.popupContentsDiv);
+        var $popupDivHolder = $popupContentsDiv.clone();
+        //after first render, the popupContentsDiv gets moved inside ph, it will be discarded above, make sure we re-add him
+        if (this.popupContentsDiv && $popupContentsDiv.length != 1) {
+          this.ph.append($popupDivHolder.html("None"));
+        }
+      },
       markerClickCallback: function (event) {
         var elt = event.data;
         var defaultMarkers = event.marker.defaultMarkers;

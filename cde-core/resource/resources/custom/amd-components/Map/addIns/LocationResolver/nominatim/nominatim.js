@@ -18,7 +18,7 @@ define([
   'amd!cdf/lib/underscore'],
   function(AddIn, Dashboard, $, _) {
   
-  var nominatim = new AddIn({
+  var nominatim = {
     name: "openstreetmap",
     label: "OpenStreetMap",
     defaults: {
@@ -78,7 +78,7 @@ define([
         }
       };
       var onError = function(){
-        st.continuationFunction(null);
+        st.continuationFunction(undefined);
       };
       return $.ajax({
         dataType: "json",
@@ -90,8 +90,8 @@ define([
 
 
     }
-  });
-  Dashboard.registerGlobalAddIn("NewMapComponent", "LocationResolver", nominatim);
+  };
+  Dashboard.registerGlobalAddIn("NewMapComponent", "LocationResolver", new AddIn(nominatim));
 
   return nominatim;
 
