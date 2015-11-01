@@ -32,6 +32,7 @@ define([
     API_KEY: 0,
     constructor: function (options) {
       this.base();
+      $.extend(this, options);
       this.layers = {}; // map layers
       this.controls = {}; // map controls
     },
@@ -62,7 +63,11 @@ define([
       var conversionTable = {
         // SVG standard attributes : OpenLayers2 attributes
         'fill': 'fillColor',
+        'fill-opacity': 'fillOpacity',
         'stroke': 'strokeColor',
+        'stroke-opacity': 'strokeOpacity',
+        'stroke-width': 'strokeWidth',
+        'r': 'pointRadius',
         //Backwards compatibility
         'fillColor': 'fillColor',
         'fillOpacity': 'fillOpacity',
@@ -88,7 +93,7 @@ define([
           }
         }
       });
-      console.log('foreign vs valid:', foreignStyle, validStyle);
+      //console.log('foreign vs valid:', foreignStyle, validStyle);
       return validStyle;
     },
 
@@ -143,9 +148,7 @@ define([
       //});
 
       // this.model.flatten().reject(function(m){ return m.children(); }).each(function (m) {
-
       //   console.log(m);
-
       // });
 
       model.flatten().filter(function (m) {
