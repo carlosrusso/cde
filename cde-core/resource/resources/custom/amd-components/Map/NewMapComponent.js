@@ -186,8 +186,6 @@ define([
           value: 1
         };
 
-        //this.mapEngine.render(this.model)
-
         var me = this;
         if (this.mapMode === "shapes") {
           var keys = _.pluck(json.resultset, idx.id);
@@ -274,44 +272,44 @@ define([
           //nodes: this.initNodesModel(json)
         };
         this.model.add(modelTree);
-
+        this._addSeriesToModel(json);
 
       },
 
-      initNodesModel: function (json) {
+      attributeMapping: {
+        'pan': {
+          'unselected': {
+            'normal': {
+              fillColor: function (seriesRoot, row, rowIdx) {
+                // TODO: Discover automatically which columns correspond to the key and to the value
+                return this.mapColor(row[1],
+                  seriesRoot.get('minValue'),
+                  seriesRoot.get('maxValue'),
+                  seriesRoot.get('colormap')
+                );
+              }
+            }
+          }
+        }
+      },
+
+      _addSeriesToModel: function (json) {
 
         var me = this;
 
         var seriesRoot = this.model.findWhere({'id': this.mapMode});
-        var attributeMap = {
-          'pan': {
-            'unselected': {
-              'normal': {
-                fillColor: function (row, rowIdx) {
-                  // TODO: Discover automatically which columns correspond to the key and to the value
-                  return this.mapColor(row[1],
-                    seriesRoot.get('minValue'),
-                    seriesRoot.get('maxValue'),
-                    seriesRoot.get('colormap')
-                  );
-                }
-              }
-            }
-          }
-        };
-
         var series = _.map(json.resultset, function (row, rowIdx) {
           var id = row[0];
           var styleMap = {};
 
-          _.each(attributeMap, function (modeStyle, mode) {
+          _.each(me.attributeMapping, function (modeStyle, mode) {
             _.each(modeStyle, function (stateStyle, state) {
               _.each(stateStyle, function (actionStyle, action) {
                 _.each(actionStyle, function (value, attr) {
                   styleMap[mode] = styleMap[mode] || {};
                   styleMap[mode][state] = styleMap[mode][state] || {};
                   styleMap[mode][state][action] = styleMap[mode][state][action] || {};
-                  styleMap[mode][state][action][attr] = _.isFunction(value) ? value.call(me, row, rowIdx) : value;
+                  styleMap[mode][state][action][attr] = _.isFunction(value) ? value.call(me, seriesRoot, row, rowIdx) : value;
                 })
               });
             });
@@ -462,24 +460,17 @@ define([
           this.mapEngine = new OpenLayersEngine(options);
         }
 
-        // Do we really need to do an $.extend?
-        $.extend(true, this.mapEngine, {
-          API_KEY: this.API_KEY || window.API_KEY, //either local or global API_KEY
-          tileServices: this.tileServices,
-          tileServicesOptions: this.tileServicesOptions
-        });
         return this.mapEngine.init(this.tilesets).then(_.bind(function () {
-          this.ph = this.placeholder();
-          this.ph.empty(); //clear();
+          var ph = this.placeholder().empty();
           this._initControlPanel();
           this._initPopup();
           this._relayEvents();
-          this.mapEngine.renderMap(this.ph[0]);
+          this.mapEngine.renderMap(ph[0]);
         }, this));
       },
 
       _initControlPanel: function () {
-        var $controlPanel = $('<div class="map-controls" />').appendTo(this.ph);
+        var $controlPanel = $('<div class="map-controls" />').appendTo(this.placeholder());
         this.controlPanel = new ControlPanel($controlPanel);
         this.controlPanel.render();
         var eventMapping = {
@@ -510,7 +501,6 @@ define([
       render: function (json) {
 
         this.initModel(json);
-        this.initNodesModel(json);
 
         // Mark selected model items
         var idList = this.dashboard.getParameterValue(this.parameter);
@@ -519,7 +509,6 @@ define([
 
         var centerLatitude = parseFloat(this.centerLatitude);
         var centerLongitude = parseFloat(this.centerLongitude);
-
         this.mapEngine.render(this.model);
         this.mapEngine.updateViewport(centerLongitude, centerLatitude, this.defaultZoomLevel);
 
@@ -736,7 +725,7 @@ define([
             addinName = 'urlMarker';
           }
           var addIn = this.getAddIn("MarkerImage", addinName);
-          markerIcon = addIn.call(this.ph, st, this.getAddInOptions("MarkerImage", addIn.getName()));
+          markerIcon = addIn.call(this.placeholder(), st, this.getAddInOptions("MarkerImage", addIn.getName()));
         }
         if (mapping.description) {
           description = row[mapping.description];
@@ -768,7 +757,7 @@ define([
         var $popupDivHolder = $popupContentsDiv.clone();
         //after first render, the popupContentsDiv gets moved inside ph, it will be discarded above, make sure we re-add him
         if (this.popupContentsDiv && $popupContentsDiv.length != 1) {
-          this.ph.append($popupDivHolder.html("None"));
+          this.placeholder().append($popupDivHolder.html("None"));
         }
       },
       markerClickCallback: function (event) {
