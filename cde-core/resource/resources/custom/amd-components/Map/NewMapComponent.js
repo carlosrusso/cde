@@ -212,6 +212,11 @@ define([
         this.model = new MapSelectionTree({
           styleMap: this.getStyleMap('global')
         });
+        this.model.root().set('mode', this.controlPanel.getMode());
+        var me = this;
+        this.listenTo(this.controlPanel, 'change:mode', function(model, value){
+          me.model.root().set('mode', value);
+        });
 
         // var series = _.map(json.resultset, function (row, rowIdx) {
         //   return {
@@ -277,44 +282,72 @@ define([
       },
 
       attributeMapping: {
-        'pan': {
-          'unselected': {
-            'normal': {
-              fillColor: function (seriesRoot, row, rowIdx) {
-                // TODO: Discover automatically which columns correspond to the key and to the value
-                return this.mapColor(row[1],
-                  seriesRoot.get('minValue'),
-                  seriesRoot.get('maxValue'),
-                  seriesRoot.get('colormap')
-                );
-              }
-            }
+        fill: function (context, seriesRoot, mapping, row, rowIdx) {
+          // TODO: Discover automatically which columns correspond to the key and to the value
+          var value = row[mapping.fill];
+          var fillColor = seriesRoot.getStyle(context.mode, context.state, context.action).fill;
+          if (_.isNumber(value) && context.state === 'unselected') {
+            return this.mapColor(value,
+              seriesRoot.get('minValue'),
+              seriesRoot.get('maxValue'),
+              seriesRoot.get('colormap')
+            );
+          } else {
+            return fillColor;
           }
         }
       },
 
       _addSeriesToModel: function (json) {
+        var mapping = {
+          id: 0,
+          fill: 1
+        };
 
         var me = this;
 
         var seriesRoot = this.model.findWhere({'id': this.mapMode});
         var series = _.map(json.resultset, function (row, rowIdx) {
-          var id = row[0];
-          var styleMap = {};
 
-          _.each(me.attributeMapping, function (modeStyle, mode) {
-            _.each(modeStyle, function (stateStyle, state) {
-              _.each(stateStyle, function (actionStyle, action) {
-                _.each(actionStyle, function (value, attr) {
+          var id = row[mapping.id];
+          var styleMap = {};
+          var modes = ['pan', 'zoombox', 'selection'],
+            states = ['unselected', 'selected'],
+            actions = ['normal', 'hover'];
+
+          _.each(modes, function (mode) {
+            _.each(states, function (state) {
+              _.each(actions, function (action) {
+                _.each(me.attributeMapping, function (functionOrValue, attribute) {
+                  var context = {
+                    mode: mode,
+                    state: state,
+                    action: action
+                  };
+                  var value = _.isFunction(functionOrValue) ? functionOrValue.call(me, context, seriesRoot, mapping, row, rowIdx) : functionOrValue;
                   styleMap[mode] = styleMap[mode] || {};
                   styleMap[mode][state] = styleMap[mode][state] || {};
                   styleMap[mode][state][action] = styleMap[mode][state][action] || {};
-                  styleMap[mode][state][action][attr] = _.isFunction(value) ? value.call(me, seriesRoot, row, rowIdx) : value;
-                })
+                  styleMap[mode][state][action][attribute] = value;
+                });
               });
             });
-          });
 
+          });
+          /*
+           _.each(me.attributeMapping, function (modeStyle, mode) {
+           _.each(modeStyle, function (stateStyle, state) {
+           _.each(stateStyle, function (actionStyle, action) {
+           _.each(actionStyle, function (value, attr) {
+           styleMap[mode] = styleMap[mode] || {};
+           styleMap[mode][state] = styleMap[mode][state] || {};
+           styleMap[mode][state][action] = styleMap[mode][state][action] || {};
+           styleMap[mode][state][action][attr] = _.isFunction(value) ? value.call(me, seriesRoot, row, rowIdx) : value;
+           })
+           });
+           });
+           });
+           */
           /*
            var styleMapTemplate = {
            'pan': {
@@ -493,6 +526,8 @@ define([
           }
         });
 
+
+
         this.listenTo(this.controlPanel, 'selection:complete', function () {
           me.processChange();
         });
@@ -608,53 +643,6 @@ define([
           }
         });
       },
-
-      /*
-       renderShapes: function (json) {
-       if (!this.shapeDefinition) {
-       return;
-       }
-       if (!json || !json.resultset) {
-       return;
-       }
-
-       //Build an hashmap from metadata
-       //var mapping = this.getMapping(values);
-       //TODO: Discover automatically which columns correspond to the key and to the value
-       var idx = {
-       key: 0,
-       value: 1
-       };
-
-       var defaultShapeStyle = this.getStyleMap('shapes').pan.unselected.default;
-
-       // Attribute a color each shape
-       var colormap = this.getColorMap();
-       var qvalues = _.pluck(json.resultset, idx.value);
-       var minValue = _.min(qvalues),
-       maxValue = _.max(qvalues);
-
-       var me = this;
-       _.each(json.resultset, function (row) {
-
-       var shapeDefinition = me.shapeDefinition[row[idx.key]];
-       var fillColor = me.mapColor(row[idx.value], minValue, maxValue, colormap);
-       var shapeStyle = _.defaults({
-       fillColor: fillColor
-       }, defaultShapeStyle);
-       var data = {
-       rawData: row,
-       key: row[idx.key],
-       value: row[idx.value],
-       minValue: minValue,
-       maxValue: maxValue
-       };
-
-       me.mapEngine.setShape(shapeDefinition, shapeStyle, data);
-       });
-       },
-
-       */
 
       getStyleMap: function (styleName) {
 
