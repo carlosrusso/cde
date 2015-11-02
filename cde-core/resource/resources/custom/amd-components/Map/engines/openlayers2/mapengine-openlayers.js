@@ -32,6 +32,7 @@ define([
     API_KEY: 0,
     constructor: function (options) {
       this.base();
+      $.extend(this, options);
       this.layers = {}; // map layers
       this.controls = {}; // map controls
     },
@@ -62,7 +63,11 @@ define([
       var conversionTable = {
         // SVG standard attributes : OpenLayers2 attributes
         'fill': 'fillColor',
+        'fill-opacity': 'fillOpacity',
         'stroke': 'strokeColor',
+        'stroke-opacity': 'strokeOpacity',
+        'stroke-width': 'strokeWidth',
+        'r': 'pointRadius',
         //Backwards compatibility
         'fillColor': 'fillColor',
         'fillOpacity': 'fillOpacity',
@@ -88,7 +93,7 @@ define([
           }
         }
       });
-      console.log('foreign vs valid:', foreignStyle, validStyle);
+      //console.log('foreign vs valid:', foreignStyle, validStyle);
       return validStyle;
     },
 
@@ -143,9 +148,7 @@ define([
       //});
 
       // this.model.flatten().reject(function(m){ return m.children(); }).each(function (m) {
-
       //   console.log(m);
-
       // });
 
       model.flatten().filter(function (m) {
@@ -170,8 +173,8 @@ define([
       var row = modelItem.get('rawData');
       var data = {
         model: modelItem,
-        rawData: row
-        //key: row[idx.key],
+        rawData: row,
+        key: row && row[0]
         //value: row[idx.value],
       };
       this._renderItem(modelItem, data, this.layers.markers);
@@ -203,8 +206,9 @@ define([
           return;
         }
         var f = me._geoJSONParser.parseFeature(feature);
-        var selectionState = (modelItem.getSelection() === SelectionStates.ALL) ? 'selected' : 'unselected';
-        var style = modelItem.getStyle().pan[selectionState].normal;
+        //var selectionState = (modelItem.getSelection() === SelectionStates.ALL) ? 'selected' : 'unselected';
+        //var style = modelItem.getStyle('pan', selectionState, 'normal');
+        var style = modelItem.inferStyle('normal');
         $.extend(true, f, {
           data: {
             data: data
@@ -385,62 +389,65 @@ define([
       //   }
       // });
 
-      var style = OpenLayers.Util.extend({}, OpenLayers.Feature.Vector.style['default']);
+      /*
 
-      style.fillColor = '${fillColor}';
-      style.fillOpacity = '${fillOpacity}';
-      style.strokeWidth = '${strokeWidth}';
-      style.graphicZIndex = '${graphicZIndex}';
-      style.strokeColor = '${strokeColor}';
+       var style = OpenLayers.Util.extend({}, OpenLayers.Feature.Vector.style['default']);
 
-      var olStyle = new OpenLayers.Style(style, {
-        context: {
-          fillColor: function (feature) {
-            // if (feature.hasOwnProperty('attributes')) {
-            //   if (feature.attributes.hasOwnProperty('style')) {
-            //     if (feature.attributes.style.hasOwnProperty('fillColor')) {
-            //       return feature.attributes.style.fillColor;
-            //     }
-            //   }
-            // }
+       style.fillColor = '${fillColor}';
+       style.fillOpacity = '${fillOpacity}';
+       style.strokeWidth = '${strokeWidth}';
+       me.graphicZIndex = '${graphicZIndex}';
+       style.strokeColor = '${strokeColor}';
 
-            // return me.model.where({id : feature.data.data.key})[0].getStyle('pan')['unselected']['normal'].fillColor;
-            return 'blue';
-          },
+       var olStyle = new OpenLayers.Style(style, {
+       context: {
+       fillColor: function (feature) {
+       // if (feature.hasOwnProperty('attributes')) {
+       //   if (feature.attributes.hasOwnProperty('style')) {
+       //     if (feature.attributes.style.hasOwnProperty('fillColor')) {
+       //       return feature.attributes.style.fillColor;
+       //     }
+       //   }
+       // }
 
-          strokeColor: function (feature) {
-            return 'black';
-          }
-        }
-      });
+       // return me.model.where({id : feature.data.data.key})[0].getStyle('pan')['unselected']['normal'].fillColor;
+       return 'blue';
+       },
 
-      // var olOver = new OpenLayers.Style({
-      //   fillColor: 'red'
-      // });
+       strokeColor: function (feature) {
+       return 'black';
+       }
+       }
+       });
 
-      var olOver = new OpenLayers.Style(style, {
-        context: {
-          fillColor: function (feature) {
-            // return me.model.where({id : feature.data.data.key})[0].getStyle('pan')['unselected']['normal'].fillColor;
-            return 'green';
-          }
-        }
-      });
+       // var olOver = new OpenLayers.Style({
+       //   fillColor: 'red'
+       // });
 
-      var olSelect = new OpenLayers.Style({
-        fillColor: 'blue'
-      });
+       var olOver = new OpenLayers.Style(style, {
+       context: {
+       fillColor: function (feature) {
+       // return me.model.where({id : feature.data.data.key})[0].getStyle('pan')['unselected']['normal'].fillColor;
+       return 'green';
+       }
+       }
+       });
 
-      var olStyleMap = new OpenLayers.StyleMap({
-        'default': olStyle,
-        'select': olSelect,
-        'temporary': olOver
-      });
+       var olSelect = new OpenLayers.Style({
+       fillColor: 'blue'
+       });
 
+       var olStyleMap = new OpenLayers.StyleMap({
+       'default': olStyle,
+       'select': olSelect,
+       'temporary': olOver
+       });
+
+       */
 
       // add layers for the markers and for the shapes
       this.layers.shapes = new OpenLayers.Layer.Vector('Shapes', {
-        styleMap: olStyleMap,
+        //styleMap: olStyleMap,
         rendererOptions: {
           zIndexing: true
         }
@@ -452,7 +459,7 @@ define([
       this.setCallbacks();
 
       // add box selector controler
-      this.controls.boxSelector = new OpenLayers.Control.SelectFeature(this.layers.shapes, {
+      this.controls.boxSelector = new OpenLayers.Control.SelectFeature([this.layers.shapes, this.layers.markers], {
         clickout: true,
         toggle: true,
         multiple: true,
@@ -536,7 +543,13 @@ define([
     },
 
     setCallbacks: function () {
-      var myself = this;
+      registerViewportEvents.call(this);
+      this._addControlHover();
+      this._addControlClick();
+    },
+
+    _addControlHover: function () {
+      var me = this;
 
       function event_relay(e) {
         var prefix;
@@ -547,28 +560,27 @@ define([
         }
         var events = {
           'featurehighlighted': 'mouseover',
-          'featureunhighlighted': 'mouseout',
-          'featureselected': 'click' // does this ever occur?
+          'featureunhighlighted': 'mouseout'
         };
 
         var model = e.feature.data.data.model;
         var styles = {
-          'featurehighlighted': model.getSelection() ? model.getStyle('pan').selected.hover : model.getStyle('pan').unselected.hover,
-          'featureunhighlighted': model.getSelection() ? model.getStyle('pan').selected.normal : model.getStyle('pan').unselected.normal,
-          'featureselected': model.getStyle('pan').selected.normal
+          'featurehighlighted': model.inferStyle('hover'),
+          'featureunhighlighted': model.inferStyle('normal')
         };
 
+        console.log('hoverCtrl', prefix, e.type, styles[e.type]);
         if (events[e.type]) {
           if (e.type === 'featureselected') {
             console.log('Feature Selected!');
           }
-          e.feature.style = styles[e.type];
-          e.feature.layer.drawFeature(e.feature, styles[e.type]);
-          myself.trigger(prefix + ':' + events[e.type], myself.wrapEvent(e));
+          var style = me.toNativeStyle(styles[e.type]);
+          e.feature.style = style;
+          e.feature.layer.drawFeature(e.feature, style);
+          me.trigger(prefix + ':' + events[e.type], me.wrapEvent(e));
         }
       }
 
-      registerViewportEvents.call(this);
 
       this.controls.hoverCtrl = new OpenLayers.Control.SelectFeature([this.layers.markers, this.layers.shapes], {
         hover: true,
@@ -576,10 +588,9 @@ define([
         renderIntent: 'temporary',
         eventListeners: {
           featurehighlighted: event_relay,
-          featureunhighlighted: event_relay,
-          featureselected: event_relay
+          featureunhighlighted: event_relay
         },
-        // this version of OpenLayers has issues with the outFeature function
+        //// this version of OpenLayers has issues with the outFeature function
         // this version of the function patches those issues
         // code from -> http://osgeo-org.1560.x6.nabble.com/SelectFeature-outFeature-method-tt3890333.html#a4988237
         outFeature: function (feature) {
@@ -624,6 +635,10 @@ define([
       this.map.addControl(this.controls.hoverCtrl);
       this.controls.hoverCtrl.activate();
 
+
+    },
+
+    _addControlClick: function () {
       this.controls.clickCtrl = new OpenLayers.Control.SelectFeature([this.layers.markers, this.layers.shapes], {
         clickout: false
       });
@@ -632,55 +647,57 @@ define([
       this.map.addControl(this.controls.clickCtrl);
       this.controls.clickCtrl.activate();
 
-      this.layers.markers.events.on({
-        featurehighlighted: function (e) {
-          myself.trigger('marker:mouseover', myself.wrapEvent(e));
-        },
-        featureunhighlighted: function (e) {
-          myself.trigger('marker:mouseout', myself.wrapEvent(e));
-        },
-        featureselected: function (e) {
-          myself.trigger('marker:click', myself.wrapEvent(e));
-          // The feature remains selected after we close the popup box, which disables clicking on the same box.
-          // Thus we enforce that no marker is selected.
-          myself.controls.clickCtrl.unselectAll();
-        }
-      });
-
-      this.layers.shapes.events.on({
-        featureselected: function (e) {
-
-          // getAttrib
-          // setFeatAtt
-          // redraw
-          console.log(e.feature.data.data.key);
+      var me = this;
+      var createEventHandler = function (callback) {
+        return function (e) {
+          console.log(e.type, e.feature.data.data.key);
           var id = e.feature.data.data.key;
-          var model = myself.model.findWhere({id: id});
+          var model = me.model.findWhere({id: id});
+          var style = me.toNativeStyle(callback(model));
+          e.feature.style = style;
+          e.feature.layer.drawFeature(e.feature, style);
+          //myself.trigger('shape:click', myself.wrapEvent(e));
+        }
+      };
+      var eventHandlers = {
+        //'featurehighlighted': createEventHandler(function(model){
+        //  return model.inferStyle('hover');
+        //}),
+        'featureselected': createEventHandler(function(model){
           model.setSelection(SelectionStates.ALL);
-          var style = model.getStyle('pan').selected.normal;
-          e.feature.layer.drawFeature(e.feature, style);
-
-          //myself.trigger('shape:click', myself.wrapEvent(e));
-        },
-        featureunselected: function (e) {
-          console.log(e.feature.data.data.key);
-
-          var id = e.feature.data.data.key;
-          var model = myself.model.findWhere({id: id});
+          return model.inferStyle('hover');
+        }),
+        'featureunselected': createEventHandler(function(model){
           model.setSelection(SelectionStates.NONE);
-          var style = model.getStyle('pan').unselected.normal;
-          e.feature.layer.drawFeature(e.feature, style);
+          return model.inferStyle('normal');
+        })
+      };
 
-          // myself.model.where({id: id}).each(function(m){
-          //   m.setSelection(false);
-          // });
+      /*
+       this.layers.markers.events.on({
+       featurehighlighted: function (e) {
+       myself.trigger('marker:mouseover', myself.wrapEvent(e));
+       },
+       featureunhighlighted: function (e) {
+       myself.trigger('marker:mouseout', myself.wrapEvent(e));
+       },
+       featureselected: function (e) {
+       myself.trigger('marker:click', myself.wrapEvent(e));
+       // The feature remains selected after we close the popup box, which disables clicking on the same box.
+       // Thus we enforce that no marker is selected.
+       myself.controls.clickCtrl.unselectAll();
+       }
+       });
+       */
 
-          //myself.trigger('shape:click', myself.wrapEvent(e));
-        }
-      });
+      this.layers.markers.events.on(eventHandlers);
+      // letting marker events fall through
+      this.layers.markers.events.fallThrough = true;
 
+      this.layers.shapes.events.on(eventHandlers);
       // letting shapes events fall through
       this.layers.shapes.events.fallThrough = true;
+
     },
 
     tileLayer: function (name) {

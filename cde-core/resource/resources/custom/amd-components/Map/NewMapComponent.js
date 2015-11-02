@@ -186,8 +186,6 @@ define([
           value: 1
         };
 
-        //this.mapEngine.render(this.model)
-
         var me = this;
         if (this.mapMode === "shapes") {
           var keys = _.pluck(json.resultset, idx.id);
@@ -213,6 +211,11 @@ define([
 
         this.model = new MapSelectionTree({
           styleMap: this.getStyleMap('global')
+        });
+        this.model.root().set('mode', this.controlPanel.getMode());
+        var me = this;
+        this.listenTo(this.controlPanel, 'change:mode', function(model, value){
+          me.model.root().set('mode', value);
         });
 
         // var series = _.map(json.resultset, function (row, rowIdx) {
@@ -274,49 +277,77 @@ define([
           //nodes: this.initNodesModel(json)
         };
         this.model.add(modelTree);
-
+        this._addSeriesToModel(json);
 
       },
 
-      initNodesModel: function (json) {
+      attributeMapping: {
+        fill: function (context, seriesRoot, mapping, row, rowIdx) {
+          // TODO: Discover automatically which columns correspond to the key and to the value
+          var value = row[mapping.fill];
+          var fillColor = seriesRoot.getStyle(context.mode, context.state, context.action).fill;
+          if (_.isNumber(value) && context.state === 'unselected') {
+            return this.mapColor(value,
+              seriesRoot.get('minValue'),
+              seriesRoot.get('maxValue'),
+              seriesRoot.get('colormap')
+            );
+          } else {
+            return fillColor;
+          }
+        }
+      },
+
+      _addSeriesToModel: function (json) {
+        var mapping = {
+          id: 0,
+          fill: 1
+        };
 
         var me = this;
 
         var seriesRoot = this.model.findWhere({'id': this.mapMode});
-        var attributeMap = {
-          'pan': {
-            'unselected': {
-              'normal': {
-                fillColor: function (row, rowIdx) {
-                  // TODO: Discover automatically which columns correspond to the key and to the value
-                  return this.mapColor(row[1],
-                    seriesRoot.get('minValue'),
-                    seriesRoot.get('maxValue'),
-                    seriesRoot.get('colormap')
-                  );
-                }
-              }
-            }
-          }
-        };
-
         var series = _.map(json.resultset, function (row, rowIdx) {
-          var id = row[0];
-          var styleMap = {};
 
-          _.each(attributeMap, function (modeStyle, mode) {
-            _.each(modeStyle, function (stateStyle, state) {
-              _.each(stateStyle, function (actionStyle, action) {
-                _.each(actionStyle, function (value, attr) {
+          var id = row[mapping.id];
+          var styleMap = {};
+          var modes = ['pan', 'zoombox', 'selection'],
+            states = ['unselected', 'selected'],
+            actions = ['normal', 'hover'];
+
+          _.each(modes, function (mode) {
+            _.each(states, function (state) {
+              _.each(actions, function (action) {
+                _.each(me.attributeMapping, function (functionOrValue, attribute) {
+                  var context = {
+                    mode: mode,
+                    state: state,
+                    action: action
+                  };
+                  var value = _.isFunction(functionOrValue) ? functionOrValue.call(me, context, seriesRoot, mapping, row, rowIdx) : functionOrValue;
                   styleMap[mode] = styleMap[mode] || {};
                   styleMap[mode][state] = styleMap[mode][state] || {};
                   styleMap[mode][state][action] = styleMap[mode][state][action] || {};
-                  styleMap[mode][state][action][attr] = _.isFunction(value) ? value.call(me, row, rowIdx) : value;
-                })
+                  styleMap[mode][state][action][attribute] = value;
+                });
               });
             });
-          });
 
+          });
+          /*
+           _.each(me.attributeMapping, function (modeStyle, mode) {
+           _.each(modeStyle, function (stateStyle, state) {
+           _.each(stateStyle, function (actionStyle, action) {
+           _.each(actionStyle, function (value, attr) {
+           styleMap[mode] = styleMap[mode] || {};
+           styleMap[mode][state] = styleMap[mode][state] || {};
+           styleMap[mode][state][action] = styleMap[mode][state][action] || {};
+           styleMap[mode][state][action][attr] = _.isFunction(value) ? value.call(me, seriesRoot, row, rowIdx) : value;
+           })
+           });
+           });
+           });
+           */
           /*
            var styleMapTemplate = {
            'pan': {
@@ -462,24 +493,17 @@ define([
           this.mapEngine = new OpenLayersEngine(options);
         }
 
-        // Do we really need to do an $.extend?
-        $.extend(true, this.mapEngine, {
-          API_KEY: this.API_KEY || window.API_KEY, //either local or global API_KEY
-          tileServices: this.tileServices,
-          tileServicesOptions: this.tileServicesOptions
-        });
         return this.mapEngine.init(this.tilesets).then(_.bind(function () {
-          this.ph = this.placeholder();
-          this.ph.empty(); //clear();
+          var ph = this.placeholder().empty();
           this._initControlPanel();
           this._initPopup();
           this._relayEvents();
-          this.mapEngine.renderMap(this.ph[0]);
+          this.mapEngine.renderMap(ph[0]);
         }, this));
       },
 
       _initControlPanel: function () {
-        var $controlPanel = $('<div class="map-controls" />').appendTo(this.ph);
+        var $controlPanel = $('<div class="map-controls" />').appendTo(this.placeholder());
         this.controlPanel = new ControlPanel($controlPanel);
         this.controlPanel.render();
         var eventMapping = {
@@ -502,6 +526,8 @@ define([
           }
         });
 
+
+
         this.listenTo(this.controlPanel, 'selection:complete', function () {
           me.processChange();
         });
@@ -510,7 +536,6 @@ define([
       render: function (json) {
 
         this.initModel(json);
-        this.initNodesModel(json);
 
         // Mark selected model items
         var idList = this.dashboard.getParameterValue(this.parameter);
@@ -519,7 +544,6 @@ define([
 
         var centerLatitude = parseFloat(this.centerLatitude);
         var centerLongitude = parseFloat(this.centerLongitude);
-
         this.mapEngine.render(this.model);
         this.mapEngine.updateViewport(centerLongitude, centerLatitude, this.defaultZoomLevel);
 
@@ -620,53 +644,6 @@ define([
         });
       },
 
-      /*
-       renderShapes: function (json) {
-       if (!this.shapeDefinition) {
-       return;
-       }
-       if (!json || !json.resultset) {
-       return;
-       }
-
-       //Build an hashmap from metadata
-       //var mapping = this.getMapping(values);
-       //TODO: Discover automatically which columns correspond to the key and to the value
-       var idx = {
-       key: 0,
-       value: 1
-       };
-
-       var defaultShapeStyle = this.getStyleMap('shapes').pan.unselected.default;
-
-       // Attribute a color each shape
-       var colormap = this.getColorMap();
-       var qvalues = _.pluck(json.resultset, idx.value);
-       var minValue = _.min(qvalues),
-       maxValue = _.max(qvalues);
-
-       var me = this;
-       _.each(json.resultset, function (row) {
-
-       var shapeDefinition = me.shapeDefinition[row[idx.key]];
-       var fillColor = me.mapColor(row[idx.value], minValue, maxValue, colormap);
-       var shapeStyle = _.defaults({
-       fillColor: fillColor
-       }, defaultShapeStyle);
-       var data = {
-       rawData: row,
-       key: row[idx.key],
-       value: row[idx.value],
-       minValue: minValue,
-       maxValue: maxValue
-       };
-
-       me.mapEngine.setShape(shapeDefinition, shapeStyle, data);
-       });
-       },
-
-       */
-
       getStyleMap: function (styleName) {
 
         // TODO: VERIFICAR A ORIGEM DESSE shapeDefinition e como se encaixa nos varios StyleMaps
@@ -736,7 +713,7 @@ define([
             addinName = 'urlMarker';
           }
           var addIn = this.getAddIn("MarkerImage", addinName);
-          markerIcon = addIn.call(this.ph, st, this.getAddInOptions("MarkerImage", addIn.getName()));
+          markerIcon = addIn.call(this.placeholder(), st, this.getAddInOptions("MarkerImage", addIn.getName()));
         }
         if (mapping.description) {
           description = row[mapping.description];
@@ -768,7 +745,7 @@ define([
         var $popupDivHolder = $popupContentsDiv.clone();
         //after first render, the popupContentsDiv gets moved inside ph, it will be discarded above, make sure we re-add him
         if (this.popupContentsDiv && $popupContentsDiv.length != 1) {
-          this.ph.append($popupDivHolder.html("None"));
+          this.placeholder().append($popupDivHolder.html("None"));
         }
       },
       markerClickCallback: function (event) {

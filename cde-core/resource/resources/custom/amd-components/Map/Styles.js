@@ -7,12 +7,12 @@ define([
       pan: {
         unselected: {
           normal: {
-            fillColor: "#aaa",
-            strokeColor: "#000",
+            //fill: "#aaa",
+            //stroke: "#000",
             fillOpacity: 0.5
           },
           hover: {
-            fillColor: "#fff"
+            //fill: "#fff"
           }
         },
         selected: {
@@ -25,26 +25,30 @@ define([
       pan: {
         unselected: {
           normal: {
-            pointRadius: 10,
+            r: 10,
             graphicName: 'circle',
-            label: 'label',
+            label: 'Normal',
             labelAlign: 'cm',
-            labelYOffset: -10,
-            fillColor: '#ff0000',
-            strokeColor: '#ffffff',
+            labelYOffset: -20,
+            fill: 'red',
+            stroke: '#ffffff',
             strokeWidth: 3,
             fillOpacity: 0.9
           },
           hover: {
-            fillColor: 'orange'
+            fill: 'orange',
+            label: 'Ouch!'
           }
         },
         selected: {
           normal: {
-            fillColor: 'red'
+            stroke: 'yellow',
+            fill: 'darkred',
+            label: 'Selected'
           },
           hover: {
-            fillColor: 'pink'
+            fill: 'darkorange',
+            label: 'Whooah!'
           }
         }
       }
@@ -53,20 +57,23 @@ define([
       pan: {
         unselected: {
           normal: {
+            zIndex: 0,
             strokeWidth: 1
           },
           hover: {
             strokeWidth: 2,
-            fillColor: 'orange',
-            strokeColor: '#ffffff'
+            fill: 'orange',
+            stroke: '#ffffff'
           }
         },
         selected: {
           normal: {
-            fillColor: 'red'
+            zIndex: 1,
+            stroke: 'yellow',
+            fill: 'red'
           },
           hover: {
-            fillColor: 'pink'
+            fill: 'darkred'
           }
         }
       }

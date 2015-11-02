@@ -19,44 +19,56 @@ define([
           'default': {},
           hover: {}
         },
-        selected:{
+        selected: {
           'default': {},
-          hover:{}
+          hover: {}
         }
       }
     },
 
     /**
      * Computes the node's style, using inheritance.
-     * Assumes that the style "selected" applies over the "unselected" case.
-     * Assumes that at each level "hover" applies over default.
-     * @returns { default: {...}, hover:{...}}
+     *
+     * Rules:
+     *
      */
-    getStyle: function(state){
+    getStyle: function (mode, state, action) {
       var myStyleMap = this.get('styleMap');
 
-      var style;
+      var parentStyle;
       if (this.parent()) {
-        style = this.parent().getStyle();
+        parentStyle = this.parent().getStyle();
       } else {
-        style = {}
+        parentStyle = {};
       }
 
-      $.extend(true, style, myStyleMap);
+      var style = $.extend(true, {}, parentStyle, myStyleMap);
 
-      if (state != undefined)
-        return style[state];
-      else
-        return style;
+      switch (arguments.length) {
+        case 0:
+          return style;
+        case 1:
+          return style[mode];
+        case 2:
+          return style[mode][state];
+        case 3:
+          console.log(this.get('id'), mode, state, action)
+          var calculatedStyle = $.extend(true, {}, ((style[mode] || {})[state] || {})[action]);
+          _.defaults(calculatedStyle, style[mode].unselected.normal || {}, style.pan.unselected.normal || {});
+          return calculatedStyle;
+      }
     },
 
-    getFeatureType: function(){
-
+    inferStyle: function (action) {
+      var mode = this.root().get('mode');
+      var state = (this.getSelection() === true) ? 'selected' : 'unselected';
+      return this.getStyle(mode, state, action || 'normal');
+    },
+    getFeatureType: function () {
       return this._getFeatureType([]);
-
     },
 
-    _getFeatureType: function(list){
+    _getFeatureType: function (list) {
       list.unshift(this.get('id'));
 
       if (this.parent()) {
