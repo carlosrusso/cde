@@ -52,9 +52,15 @@ define([
         case 2:
           return style[mode][state];
         case 3:
-          console.log(this.get('id'), mode, state, action)
           var calculatedStyle = $.extend(true, {}, ((style[mode] || {})[state] || {})[action]);
-          _.defaults(calculatedStyle, style[mode].unselected.normal || {}, style.pan.unselected.normal || {});
+          _.defaults(calculatedStyle,
+            style[mode][state].normal,
+            style[mode].unselected.normal,
+            style.pan[state][action],
+            style.pan[state].normal,
+            style.pan.unselected.normal
+          );
+          console.log(this.get('id'), mode, state, action, style, calculatedStyle);
           return calculatedStyle;
       }
     },

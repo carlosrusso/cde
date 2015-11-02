@@ -22,6 +22,11 @@ define([
     tileServices: undefined,
     tileServicesOptions: undefined,
     tileLayer: function(name) {},
+    init: function () {
+      var deferred = $.Deferred();
+      deferred.resolve();
+      return deferred.promise();
+    },
     renderMap: function(target) {},
     updateViewport: function (centerLongitude, centerLatitude, zoomLevel){},
     setMarker: function() {},

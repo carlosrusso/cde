@@ -21,8 +21,8 @@ define([
     var markerDefinitions;
     if (mapping.addressType === 'coordinates') {
       markerDefinitions = _.chain(json.resultset)
-        .map(function (row, rowIdx) {
-          var key = row[0];
+        .map(function (row) {
+          var key = row[0]; //TODO: remove hardcoding of index
           var location = [row[mapping.longitude], row[mapping.latitude]];
           return [key, createFeatureFromLocation(location)];
         })
@@ -104,9 +104,24 @@ define([
     // * popupWidth - Width of the popup window
     // * popupHeight - Height of the popup window
 
+    var colToPropertyMapping = { // colName -> property
+      'description': 'description',
+      'marker': 'marker',
+      'markerwidth': 'markerWidth',
+      'markerheight': 'markerHeight',
+      'popupcontents': 'popupContents',
+      'popupwidth': 'popupWidth',
+      'popupheight': 'popupHeight'
+    };
     _.each(json.metadata, function (elt, i) {
 
-      switch (elt.colName.toLowerCase()) {
+      var colName = elt.colName.toLowerCase();
+      var property = colToPropertyMapping[colName];
+      if (property){
+        map[property] = i;
+      }
+
+      switch (colName) {
         case 'latitude':
           map.addressType = 'coordinates';
           map.latitude = i;
@@ -114,27 +129,6 @@ define([
         case 'longitude':
           map.addressType = 'coordinates';
           map.longitude = i;
-          break;
-        case 'description':
-          map.description = i;
-          break;
-        case 'marker':
-          map.marker = i;
-          break;
-        case 'markerwidth':
-          map.markerWidth = i;
-          break;
-        case 'markerheight':
-          map.markerHeight = i;
-          break;
-        case 'popupcontents':
-          map.popupContents = i;
-          break;
-        case 'popupwidth':
-          map.popupWidth = i;
-          break;
-        case 'popupheight':
-          map.popupHeight = i;
           break;
         case 'address':
           if (!map.addressType) {

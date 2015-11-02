@@ -37,11 +37,11 @@
 
  1) SHAPES:
  Loading of shapes in the following file formats
+ - GeoJSON (used as the internal representation of shapes and markers)
  - JSON (not quite the same format as Kleyson's gmapsoverlay component)
  - KML (google earth)
 
  Goodies:
- - data can be exported to JSON format
  - possibility to reduce the number of points (useful for importing KML and exporting to JSON)
  - abstracted the interface to the map engines for simple tasks like changing the color of the shape on mouseover/click
 
@@ -63,7 +63,7 @@
  "http://otile{switch:1,2,3,4}.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png"
 
  3) TODOs/Ideas
- - Use GeoJSON for internal representation of shapes
+
  - Write map engines for jvectormap, openlayers3
  - improve handling of markers and popups
  - implement firing of "marker:mouseout" and "marker:mouseover" events and add corresponding callbacks
@@ -73,10 +73,10 @@
  */
 
 define([
-    'cdf/components/UnmanagedComponent',
-    'cdf/Logger',
     'cdf/lib/jquery',
     'amd!cdf/lib/underscore',
+    'cdf/components/UnmanagedComponent',
+    'cdf/Logger',
     './Map/engines/google/mapengine-google',
     './Map/engines/openlayers2/mapengine-openlayers',
     './Map/model/MapSelectionTree',
@@ -90,7 +90,7 @@ define([
     './Map/model/MapInputDataHandler',
     './Map/addIns/mapAddIns',
     'css!./NewMapComponent'],
-  function (UnmanagedComponent, Logger, $, _,
+  function ( $, _, UnmanagedComponent, Logger,
             GoogleMapEngine, OpenLayersEngine,
             MapSelectionTree, ControlPanel,
             Styles,
@@ -152,8 +152,6 @@ define([
         if (_.isString(this.tilesets)) {
           this.tilesets = [this.tilesets];
         }
-        Logger.log('Starting clock of ' + this.htmlObject, 'debug');
-        this.clock = (new Date());
 
         this.init().then(_.bind(function () {
           if (this.queryDefinition && !_.isEmpty(this.queryDefinition)) {
@@ -214,7 +212,7 @@ define([
         });
         this.model.root().set('mode', this.controlPanel.getMode());
         var me = this;
-        this.listenTo(this.controlPanel, 'change:mode', function(model, value){
+        this.listenTo(this.controlPanel, 'change:mode', function (model, value) {
           me.model.root().set('mode', value);
         });
 
@@ -285,15 +283,19 @@ define([
         fill: function (context, seriesRoot, mapping, row, rowIdx) {
           // TODO: Discover automatically which columns correspond to the key and to the value
           var value = row[mapping.fill];
-          var fillColor = seriesRoot.getStyle(context.mode, context.state, context.action).fill;
-          if (_.isNumber(value) && context.state === 'unselected') {
+          var colormap = seriesRoot.get('colormap');
+
+          if (_.isNumber(value) && context.mode === 'pan'
+            && context.state === 'unselected'
+            && context.action === 'normal') {
             return this.mapColor(value,
               seriesRoot.get('minValue'),
               seriesRoot.get('maxValue'),
-              seriesRoot.get('colormap')
+              colormap
             );
           } else {
-            return fillColor;
+            var fillColor = seriesRoot.getStyle(context.mode, context.state, context.action).fill;
+            return; //fillColor;
           }
         }
       },
@@ -325,6 +327,9 @@ define([
                     action: action
                   };
                   var value = _.isFunction(functionOrValue) ? functionOrValue.call(me, context, seriesRoot, mapping, row, rowIdx) : functionOrValue;
+                  if (_.isUndefined(value)) {
+                    return;
+                  }
                   styleMap[mode] = styleMap[mode] || {};
                   styleMap[mode][state] = styleMap[mode][state] || {};
                   styleMap[mode][state][action] = styleMap[mode][state][action] || {};
@@ -493,12 +498,12 @@ define([
           this.mapEngine = new OpenLayersEngine(options);
         }
 
-        return this.mapEngine.init(this.tilesets).then(_.bind(function () {
+        return this.mapEngine.init().then(_.bind(function () {
           var ph = this.placeholder().empty();
           this._initControlPanel();
           this._initPopup();
           this._relayEvents();
-          this.mapEngine.renderMap(ph[0]);
+          this.mapEngine.renderMap(ph[0], this.tilesets);
         }, this));
       },
 
@@ -527,7 +532,6 @@ define([
         });
 
 
-
         this.listenTo(this.controlPanel, 'selection:complete', function () {
           me.processChange();
         });
@@ -552,8 +556,6 @@ define([
         // so only here can we finish the lifecycle.
         this.postExec();
         this.maybeToggleBlock(false);
-
-        Logger.log('Stopping clock: update cycle of ' + this.htmlObject + ' took ' + (new Date() - this.clock) + ' ms', 'debug');
       },
 
 

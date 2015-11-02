@@ -51,6 +51,13 @@ define([
             label: 'Whooah!'
           }
         }
+      },
+      selection: {
+        unselected: {
+          normal: {
+            fill: 'gray'
+          }
+        }
       }
     },
     shapes: {
