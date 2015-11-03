@@ -430,7 +430,7 @@ define([
           'featureunhighlighted': model.inferStyle('normal')
         };
 
-        console.log('hoverCtrl', featureType, e.type, styles[e.type]);
+        //console.log('hoverCtrl', featureType, e.type, styles[e.type]);
         if (events[e.type]) {
           var style = me.toNativeStyle(styles[e.type]);
           e.feature.style = style;

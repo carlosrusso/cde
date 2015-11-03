@@ -568,7 +568,7 @@ define([
         var styleMap = $.extend(true, {}, Styles.getStyleMap(styleName), localStyleMap.global, localStyleMap[styleName]);
         // TODO: should we just drop this?
          switch (styleName){
-           case 'shapes':
+           case 'shape0s':
              return $.extend(true, styleMap, {
                pan: {
                  unselected: {
@@ -668,6 +668,7 @@ define([
         }
       },
       markerClickCallback: function (event) {
+        return;
         var elt = event.data;
         var defaultMarkers = event.marker.defaultMarkers;
         var mapping = event.marker.mapping;

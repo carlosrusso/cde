@@ -7,14 +7,23 @@ define([
       pan: {
         unselected: {
           normal: {
+            stroke: 'white',
             fillOpacity: 0.5
           },
           hover: {
+            stroke: 'black',
+            fillOpacity: 0.5
           }
         },
         selected: {
-          normal: {},
-          hover: {}
+          normal: {
+            stroke: 'white',
+            fillOpacity: 0.9
+          },
+          hover: {
+            stroke: 'black',
+            fillOpacity: 0.9
+          }
         }
       }
     },
@@ -28,25 +37,24 @@ define([
             labelAlign: 'cm',
             labelYOffset: -20,
             fill: 'red',
-            stroke: '#ffffff',
+            //stroke: '#ffffff',
             strokeWidth: 2,
-            fillOpacity: 0.9
+            fillOpacity: 0.4
           },
           hover: {
             //fill: 'orange',
-            stroke: "black",
+            //stroke: "black",
             label: 'Ouch!'
           }
         },
         selected: {
           normal: {
             //fill: 'darkred',
-            stroke: 'white',
             label: 'Selected'
           },
           hover: {
             //fill: 'darkorange',
-            stroke: "black",
+            //stroke: "black",
             label: 'Whooah!'
           }
         }
@@ -57,18 +65,14 @@ define([
             fill: 'gray'
           },
           hover: {
-            //fill: 'orange',
-            stroke: "black"
           }
         },
         selected: {
           normal: {
-            fill: 'red',
-            stroke: 'white'
+            fill: 'red'
           },
           hover: {
-            //fill: 'darkred',
-            stroke: "black"
+
           }
         }
       }
@@ -83,19 +87,20 @@ define([
             strokeWidth: 1
           },
           hover: {
+            zIndex: 1,
             strokeWidth: 2,
             fill: 'orange',
-            fontColor: 'orange',
-            stroke: '#ffffff'
+            fontColor: 'orange'
+            //stroke: '#ffffff'
           }
         },
         selected: {
           normal: {
-            zIndex: 1,
-            stroke: 'yellow',
+            zIndex: 0,
             fill: 'red'
           },
           hover: {
+            zIndex: 1,
             fill: 'darkred'
           }
         }
