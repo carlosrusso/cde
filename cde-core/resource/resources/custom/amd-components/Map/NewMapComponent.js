@@ -277,6 +277,7 @@ define([
           component.listenTo(engine, event, function () {
             var args = _.union([event], arguments);
             component.trigger.apply(component, args);
+            //console.log('Relayed event: ', event);
           });
         });
 
@@ -288,7 +289,6 @@ define([
          */
         var me = this;
         this.on('marker:click', function (event) {
-          return;
           var result;
           if (_.isFunction(me.markerClickFunction)) {
             result = me.markerClickFunction(event);
@@ -411,9 +411,6 @@ define([
           value: 1
         };
 
-        var qvalues = _.pluck(json.resultset, idx.value);
-        var minValue = _.min(qvalues),
-          maxValue = _.max(qvalues);
 
         var colormap = this.getColorMap();
 
@@ -421,17 +418,18 @@ define([
           id: this.mapMode,
           label: this.mapMode,
           styleMap: this.getStyleMap(this.mapMode),
-          minValue: minValue,
-          maxValue: maxValue,
           colormap: colormap//,
           //nodes: this.initNodesModel(json)
         };
         this.model.add(modelTree);
-        this._addSeriesToModel(json);
+        if (json && json.metadata && json.resultset){
+          this._addSeriesToModel(json);
+        }
 
       },
 
       visualRoles: {
+        'label': 0,
         'fill': 1
       },
 
@@ -444,31 +442,68 @@ define([
         fill: function (context, seriesRoot, mapping, row, rowIdx) {
           // TODO: Discover automatically which columns correspond to the key and to the value
           var value = row[mapping.fill];
-          var colormap = seriesRoot.get('colormap');
           var useGradient = (context.mode === 'pan' && context.state === 'unselected' && context.action === 'normal');
           useGradient = useGradient || (context.mode === 'selection' && context.state === 'selected' && context.action === 'normal');
 
           if (_.isNumber(value) && useGradient) {
+            var colormap = seriesRoot.get('colormap') || this.getColorMap();
             return this.mapColor(value,
-              seriesRoot.get('minValue'),
-              seriesRoot.get('maxValue'),
+              seriesRoot.get('extremes').fill.min,
+              seriesRoot.get('extremes').fill.max,
               colormap
             );
-          } else {
-            var fillColor = seriesRoot.getStyle(context.mode, context.state, context.action).fill;
-            return; //fillColor;
+          }
+        },
+        label: function (context, seriesRoot, mapping, row, rowIdx) {
+          return _.isEmpty(row) ? undefined : (row[mapping.label] + '');
+        },
+        r: function(context, seriesRoot, mapping, row, rowIdx){
+          var value = row[mapping.r];
+          if (_.isNumber(value)){
+            var rmin = this.scales.r[0];
+            var rmax = this.scales.r[1];
+            var v = seriesRoot.get('extremes').r;
+            //var r = rmin + (value - v.min)/(v.max - v.min)*(rmax-rmin); //linear scaling
+            var r = Math.sqrt( rmin*rmin + (rmax*rmax - rmin*rmin)*(value - v.min)/ v.max - v.min); //sqrt scaling
+            if (_.isFinite(r)){
+              return r;
+            }
           }
         }
       },
 
-      _addSeriesToModel: function (json) {
-        var mapping = {
-          id: 0,
-          fill: 1
-        };
+      _detectExtremes: function(json){
+        var extremes = _.chain(this.visualRoles)
+          .map(function(colIndex, role){
+            if (json.metadata[colIndex].colType !== 'Numeric'){
+              return [role, {}];
+            }
+            var qvalues = _.pluck(json.resultset, colIndex);
+            var minValue = _.min(qvalues),
+              maxValue = _.max(qvalues);
+            return [role, {
+              min: minValue,
+              max: maxValue
+            }]
+          })
+          .object()
+          .value();
 
+        return extremes;
+      },
+
+      _addSeriesToModel: function (json) {
+        var mapping = $.extend({
+          id: 0
+        }, this.visualRoles);
+
+        console.log(this.name, 'visualRoles', this.visualRoles);
 
         var seriesRoot = this.model.findWhere({'id': this.mapMode});
+        seriesRoot.set('extremes', this._detectExtremes(json));
+
+        var colNames = _.pluck(json.metadata, 'colName');
+
         var me = this;
         var series = _.map(json.resultset, function (row, rowIdx) {
 
@@ -482,6 +517,9 @@ define([
             _.each(states, function (state) {
               _.each(actions, function (action) {
                 _.each(me.attributeMapping, function (functionOrValue, attribute) {
+                  if (_.isUndefined(mapping[attribute]) || mapping[attribute] >= row.length ){
+                    return; //don't bother running the function when attribute is not mapped to the data
+                  }
                   var context = {
                     mode: mode,
                     state: state,
@@ -511,7 +549,8 @@ define([
             styleMap: styleMap,
             geoJSON: geoJSON,
             rowIdx: rowIdx,
-            rawData: row
+            rawData: row,
+            data: _.object(_.zip(colNames, row))
           };
 
         });
@@ -520,20 +559,25 @@ define([
       },
 
 
+      getStyleMap0: function (styleName) {
+        return Styles.getStyleMap(styleName);
+      },
 
       getStyleMap: function (styleName) {
-        // TODO: VERIFICAR A ORIGEM DESSE shapeDefinition e como se encaixa nos varios StyleMaps
-        // switch (styleName){
-        //   case 'shapes':
-        //     return _.defaults({
-        //       pan: {
-        //         unselected: {
-        //           normal: this.shapeSettings
-        //         }
-        //       }
-        //     }, Styles.getStyleMap('shapes'), Styles.getStyleMap('global'));
-        // }
-        return Styles.getStyleMap(styleName);
+        var localStyleMap = this.styleMap || {};
+        var styleMap = $.extend(true, {}, Styles.getStyleMap(styleName), localStyleMap.global, localStyleMap[styleName]);
+        // TODO: should we just drop this?
+         switch (styleName){
+           case 'shapes':
+             return $.extend(true, styleMap, {
+               pan: {
+                 unselected: {
+                   normal: this.shapeSettings
+                 }
+               }
+             });
+         }
+        return styleMap;
       },
 
       _renderMarker: function (location, row, mapping, position) {

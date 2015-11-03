@@ -7,12 +7,9 @@ define([
       pan: {
         unselected: {
           normal: {
-            //fill: "#aaa",
-            //stroke: "#000",
             fillOpacity: 0.5
           },
           hover: {
-            //fill: "#fff"
           }
         },
         selected: {
@@ -32,22 +29,24 @@ define([
             labelYOffset: -20,
             fill: 'red',
             stroke: '#ffffff',
-            strokeWidth: 3,
+            strokeWidth: 2,
             fillOpacity: 0.9
           },
           hover: {
-            fill: 'orange',
+            //fill: 'orange',
+            stroke: "black",
             label: 'Ouch!'
           }
         },
         selected: {
           normal: {
-            stroke: 'yellow',
-            fill: 'darkred',
+            //fill: 'darkred',
+            stroke: 'white',
             label: 'Selected'
           },
           hover: {
-            fill: 'darkorange',
+            //fill: 'darkorange',
+            stroke: "black",
             label: 'Whooah!'
           }
         }
@@ -58,15 +57,18 @@ define([
             fill: 'gray'
           },
           hover: {
-            fill: 'orange'
+            //fill: 'orange',
+            stroke: "black"
           }
         },
         selected: {
           normal: {
-            fill: 'red'
+            fill: 'red',
+            stroke: 'white'
           },
           hover: {
-            fill: 'darkred'
+            //fill: 'darkred',
+            stroke: "black"
           }
         }
       }
@@ -75,12 +77,15 @@ define([
       pan: {
         unselected: {
           normal: {
+            label: 'yeah',
+            fontColor: 'black',
             zIndex: 0,
             strokeWidth: 1
           },
           hover: {
             strokeWidth: 2,
             fill: 'orange',
+            fontColor: 'orange',
             stroke: '#ffffff'
           }
         },

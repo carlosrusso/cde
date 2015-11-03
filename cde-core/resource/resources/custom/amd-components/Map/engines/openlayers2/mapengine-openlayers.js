@@ -84,16 +84,16 @@ define([
       } else {
         coords = {lat: undefined, lon: undefined};
       }
-      var feature = event.feature.layer.getFeatureById(event.feature.id);
+      var feature = event.feature; //.layer.getFeatureById(event.feature.id);
       var myself = this;
       return {
+        id: event.feature.attributes.model.get('id'),
         latitude: coords.lat,
         longitude: coords.lon,
-        data: event.feature.attributes.data, //TODO review this
+        data: event.feature.attributes.model.get('data'), //TODO review this
         feature: feature, // can refer to either the shape or the marker
         featureType: featureType,
         style: event.feature.attributes.style, // currently only shape styles //TODO review this
-        marker: event.feature.attributes.marker, //marker-specific attributes //TODO review this, eventually remove
         mapEngineType: 'openlayers2',
         draw: function (style) {
           // currently only makes sense to be called on shape callbacks
@@ -136,7 +136,7 @@ define([
         var f = me._geoJSONParser.parseFeature(feature);
         var style = modelItem.inferStyle('normal');
         $.extend(true, f, {
-          data: {
+          attributes: {
             model: modelItem,
             data: data
           },
@@ -300,73 +300,6 @@ define([
         me.layers[thisTileset] = layer;
       });
 
-      // this.layers.shapes.style = new OpenLayers.StyleMap({
-      //   'default': {
-      //     fillColor: '#aaaaaa',
-      //     graphicZIndex: 0
-      //   },
-      //   'select': {
-      //     fillColor: '#0000ff',
-      //     graphicZIndex: 1
-      //   }
-      // });
-
-      /*
-
-       var style = OpenLayers.Util.extend({}, OpenLayers.Feature.Vector.style['default']);
-
-       style.fillColor = '${fillColor}';
-       style.fillOpacity = '${fillOpacity}';
-       style.strokeWidth = '${strokeWidth}';
-       me.graphicZIndex = '${graphicZIndex}';
-       style.strokeColor = '${strokeColor}';
-
-       var olStyle = new OpenLayers.Style(style, {
-       context: {
-       fillColor: function (feature) {
-       // if (feature.hasOwnProperty('attributes')) {
-       //   if (feature.attributes.hasOwnProperty('style')) {
-       //     if (feature.attributes.style.hasOwnProperty('fillColor')) {
-       //       return feature.attributes.style.fillColor;
-       //     }
-       //   }
-       // }
-
-       // return me.model.where({id : feature.data.data.key})[0].getStyle('pan')['unselected']['normal'].fillColor;
-       return 'blue';
-       },
-
-       strokeColor: function (feature) {
-       return 'black';
-       }
-       }
-       });
-
-       // var olOver = new OpenLayers.Style({
-       //   fillColor: 'red'
-       // });
-
-       var olOver = new OpenLayers.Style(style, {
-       context: {
-       fillColor: function (feature) {
-       // return me.model.where({id : feature.data.data.key})[0].getStyle('pan')['unselected']['normal'].fillColor;
-       return 'green';
-       }
-       }
-       });
-
-       var olSelect = new OpenLayers.Style({
-       fillColor: 'blue'
-       });
-
-       var olStyleMap = new OpenLayers.StyleMap({
-       'default': olStyle,
-       'select': olSelect,
-       'temporary': olOver
-       });
-
-       */
-
       // add layers for the markers and for the shapes
       this.layers.shapes = new OpenLayers.Layer.Vector('Shapes', {
         //styleMap: olStyleMap,
@@ -484,32 +417,25 @@ define([
       var me = this;
 
       function event_relay(e) {
-        var prefix;
-        if (e.feature.layer.name == 'Shapes') {
-          prefix = 'shape';
-        } else {
-          prefix = 'marker';
-        }
+        var featureType = getLayerFromEvent(e);
+
         var events = {
           'featurehighlighted': 'mouseover',
           'featureunhighlighted': 'mouseout'
         };
 
-        var model = e.feature.data.model;
+        var model = e.feature.attributes.model;
         var styles = {
           'featurehighlighted': model.inferStyle('hover'),
           'featureunhighlighted': model.inferStyle('normal')
         };
 
-        console.log('hoverCtrl', prefix, e.type, styles[e.type]);
+        console.log('hoverCtrl', featureType, e.type, styles[e.type]);
         if (events[e.type]) {
-          if (e.type === 'featureselected') {
-            console.log('Feature Selected!');
-          }
           var style = me.toNativeStyle(styles[e.type]);
           e.feature.style = style;
           e.feature.layer.drawFeature(e.feature, style);
-          me.trigger(prefix + ':' + events[e.type], me.wrapEvent(e));
+          me.trigger(featureType + ':' + events[e.type], me.wrapEvent(e));
         }
       }
 
@@ -566,8 +492,6 @@ define([
       this.controls.hoverCtrl.handlers['feature'].stopDown = false;
       this.map.addControl(this.controls.hoverCtrl);
       this.controls.hoverCtrl.activate();
-
-
     },
 
     _addControlClick: function () {
@@ -582,12 +506,12 @@ define([
       var me = this;
       var createEventHandler = function (callback) {
         return function (e) {
-          console.log(e.type, e.feature.data.data.key);
-          var model = e.feature.data.model;
+          var model = e.feature.attributes.model;
           var style = me.toNativeStyle(callback(model));
           e.feature.style = style;
           e.feature.layer.drawFeature(e.feature, style);
-          //myself.trigger('shape:click', myself.wrapEvent(e));
+          var featureType = getLayerFromEvent(e);
+          me.trigger(featureType + ':click', me.wrapEvent(e));
         }
       };
       var eventHandlers = {
@@ -613,29 +537,10 @@ define([
         })
       };
 
-      /*
-       this.layers.markers.events.on({
-       featurehighlighted: function (e) {
-       myself.trigger('marker:mouseover', myself.wrapEvent(e));
-       },
-       featureunhighlighted: function (e) {
-       myself.trigger('marker:mouseout', myself.wrapEvent(e));
-       },
-       featureselected: function (e) {
-       myself.trigger('marker:click', myself.wrapEvent(e));
-       // The feature remains selected after we close the popup box, which disables clicking on the same box.
-       // Thus we enforce that no marker is selected.
-       myself.controls.clickCtrl.unselectAll();
-       }
-       });
-       */
-
       this.layers.markers.events.on(eventHandlers);
+      this.layers.shapes.events.on(eventHandlers);
       // letting marker events fall through
       this.layers.markers.events.fallThrough = true;
-
-      this.layers.shapes.events.on(eventHandlers);
-      // letting shapes events fall through
       this.layers.shapes.events.fallThrough = true;
 
     },
@@ -644,7 +549,7 @@ define([
       var me = this;
       var features = _.union(this.layers.shapes.features, this.layers.markers.features);
       _.each(features, function (f) {
-        var model = f.data.model;
+        var model = f.attributes.model;
         var style = me.toNativeStyle(model.inferStyle('normal'));
         f.style = style;
         f.layer.drawFeature(f, style);
@@ -721,6 +626,17 @@ define([
       }
     }
   });
+
+  function getLayerFromEvent(e) {
+    var layer;
+    if (e.feature.layer.name == 'Shapes') {
+      layer = 'shape';
+    } else {
+      layer = 'marker';
+    }
+    return layer;
+  }
+
   return OpenLayersEngine;
 
 })

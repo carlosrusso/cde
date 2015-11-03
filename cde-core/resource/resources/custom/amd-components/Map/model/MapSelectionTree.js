@@ -53,6 +53,7 @@ define([
           return style[mode][state];
         case 3:
           var calculatedStyle = $.extend(true, {}, ((style[mode] || {})[state] || {})[action]);
+          // Attempt to fill in the gaps
           _.defaults(calculatedStyle,
             style[mode][state].normal,
             style[mode].unselected.normal,
@@ -60,7 +61,7 @@ define([
             style.pan[state].normal,
             style.pan.unselected.normal
           );
-          console.log(this.get('id'), mode, state, action, style, calculatedStyle);
+          //console.log(this.get('id'), mode, state, action, style, calculatedStyle);
           return calculatedStyle;
       }
     },
