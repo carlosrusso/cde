@@ -90,7 +90,7 @@ define([
     './Map/model/MapInputDataHandler',
     './Map/addIns/mapAddIns',
     'css!./NewMapComponent'],
-  function ( $, _, UnmanagedComponent, Logger,
+  function ($, _, UnmanagedComponent, Logger,
             GoogleMapEngine, OpenLayersEngine,
             MapSelectionTree, ControlPanel,
             Styles,
@@ -186,8 +186,8 @@ define([
 
         var me = this;
         if (this.mapMode === "shapes") {
-          var keys = _.pluck(json.resultset, idx.id);
-          this.resolveShapes(this.shapeResolver, this.shapeSource, keys, json)
+          var idList = _.pluck(json.resultset, idx.id);
+          this.resolveShapes(this.shapeResolver, this.shapeSource, idList, json)
             .then(function (shapeDefinition) {
               me.shapeDefinition = shapeDefinition;
               Logger.log('Loaded ' + _.size(me.shapeDefinition) + ' shapes', 'debug');
@@ -204,6 +204,158 @@ define([
         }
 
       },
+
+
+      init: function () {
+        //var inputOptions = {};
+        //this.inputDataHandler = new MapInputDataHandler(inputOptions);
+
+        var options = {
+          API_KEY: this.API_KEY || window.API_KEY, //either local or global API_KEY
+          tileServices: this.tileServices,
+          tileServicesOptions: this.tileServicesOptions
+        };
+
+
+        if (this.mapEngineType == 'google') {
+          this.mapEngine = new GoogleMapEngine(options);
+        } else {
+          this.mapEngine = new OpenLayersEngine(options);
+        }
+
+        return this.mapEngine.init().then(_.bind(function () {
+          var ph = this.placeholder().empty();
+          this._initControlPanel();
+          this._relayMapEngineEvents();
+          this.mapEngine.renderMap(ph[0], this.tilesets);
+          this._initPopup();
+        }, this));
+      },
+
+      _initControlPanel: function () {
+        var $controlPanel = $('<div class="map-controls" />').appendTo(this.placeholder());
+        this.controlPanel = new ControlPanel($controlPanel);
+        this.controlPanel.render();
+        var me = this;
+        var eventMapping = {
+          'selection:complete': this.processChange,
+          'zoom:in': this.mapEngine.zoomIn,
+          'zoom:out': this.mapEngine.zoomOut
+        };
+
+        _.each(eventMapping, function (callback, event) {
+          if (_.isFunction(callback)) {
+            me.listenTo(me.controlPanel, event, callback);
+          }
+        });
+      },
+
+      render: function (json) {
+        this.initModel(json);
+        this.updateSelection();
+
+        this.mapEngine.render(this.model);
+        var centerLatitude = parseFloat(this.centerLatitude);
+        var centerLongitude = parseFloat(this.centerLongitude);
+        this.mapEngine.updateViewport(centerLongitude, centerLatitude, this.defaultZoomLevel);
+
+        // google mapEngine implementation will still fetch data asynchronously before ca
+        // so only here can we finish the lifecycle.
+        this.postExec();
+        this.maybeToggleBlock(false);
+      },
+
+
+      _relayMapEngineEvents: function () {
+        var engine = this.mapEngine;
+        var component = this;
+        var events = [
+          'marker:click', 'marker:mouseover', 'marker:mouseout',
+          'shape:click', 'shape:mouseover', 'shape:mouseout'
+        ];
+        _.each(events, function (event) {
+          component.listenTo(engine, event, function () {
+            var args = _.union([event], arguments);
+            component.trigger.apply(component, args);
+          });
+        });
+
+      },
+
+      _registerEvents: function () {
+        /** Registers handlers for mouse events
+         *
+         */
+        var me = this;
+        this.on('marker:click', function (event) {
+          return;
+          var result;
+          if (_.isFunction(me.markerClickFunction)) {
+            result = me.markerClickFunction(event);
+          }
+          if (result !== false) {
+            // built-in click handler for markers
+            me.markerClickCallback(event);
+          }
+        });
+
+        // Marker mouseover/mouseout events are not yet completely supported
+        // this.on('marker:mouseover', function(event){
+        //   // Logger.log('Marker mouseover');
+        // });
+        // this.on('marker:mouseout', function(event){
+        //   Logger.log('Marker mouseout');
+        // });
+
+        this.on('shape:mouseover', function (event) {
+          // Logger.log('Shape mouseover');
+          //this.mapEngine.showPopup(event.data,  event.feature, 50, 20, "Hello", undefined, 'red'); //Poor man's popup, only seems to work with OpenLayers
+          if (_.isFunction(me.shapeMouseOver)) {
+            var result = me.shapeMouseOver(event);
+            return;
+            if (result) {
+              result = _.isObject(result) ? result : {};
+              event.draw(_.defaults(result, {'zIndex': 1}, event.style));
+            }
+          }
+        });
+
+        this.on('shape:mouseout', function (event) {
+          //Logger.log('Shape mouseout');
+          var result = {};
+          if (_.isFunction(me.shapeMouseOut)) {
+            result = me.shapeMouseOut(event);
+          }
+          return;
+          result = _.isObject(result) ? result : {};
+          if (event.isSelected()) {
+            event.draw(_.defaults(result, event.getSelectedStyle()));
+          } else if (_.size(result) > 0) {
+            event.draw(_.defaults(result, event.style));
+          } else if (me.shapeMouseOver) {
+            event.draw(event.style);
+          }
+
+        });
+
+        this.on('shape:click', function (event) {
+          me.processChange();
+          if (_.isFunction(me.shapeMouseClick)) {
+            var result = me.shapeMouseClick(event);
+            return;
+            if (result) {
+              result = _.isObject(result) ? result : {};
+              var selStyle = _.defaults(result, event.style);
+              //event.setSelectedStyle(selStyle);
+              //event.draw(selStyle);
+            }
+          }
+        });
+      },
+
+
+      resolveShapes: resolveShapes,
+      resolveMarkers: resolveMarkers,
 
       initModel: function (json) {
 
@@ -279,15 +431,24 @@ define([
 
       },
 
+      visualRoles: {
+        'fill': 1
+      },
+
+      scales: {
+        fill: 'default', //named colormap, or a colormap definition
+        r: [10, 20]
+      },
+
       attributeMapping: {
         fill: function (context, seriesRoot, mapping, row, rowIdx) {
           // TODO: Discover automatically which columns correspond to the key and to the value
           var value = row[mapping.fill];
           var colormap = seriesRoot.get('colormap');
+          var useGradient = (context.mode === 'pan' && context.state === 'unselected' && context.action === 'normal');
+          useGradient = useGradient || (context.mode === 'selection' && context.state === 'selected' && context.action === 'normal');
 
-          if (_.isNumber(value) && context.mode === 'pan'
-            && context.state === 'unselected'
-            && context.action === 'normal') {
+          if (_.isNumber(value) && useGradient) {
             return this.mapColor(value,
               seriesRoot.get('minValue'),
               seriesRoot.get('maxValue'),
@@ -306,9 +467,9 @@ define([
           fill: 1
         };
 
-        var me = this;
 
         var seriesRoot = this.model.findWhere({'id': this.mapMode});
+        var me = this;
         var series = _.map(json.resultset, function (row, rowIdx) {
 
           var id = row[mapping.id];
@@ -339,86 +500,7 @@ define([
             });
 
           });
-          /*
-           _.each(me.attributeMapping, function (modeStyle, mode) {
-           _.each(modeStyle, function (stateStyle, state) {
-           _.each(stateStyle, function (actionStyle, action) {
-           _.each(actionStyle, function (value, attr) {
-           styleMap[mode] = styleMap[mode] || {};
-           styleMap[mode][state] = styleMap[mode][state] || {};
-           styleMap[mode][state][action] = styleMap[mode][state][action] || {};
-           styleMap[mode][state][action][attr] = _.isFunction(value) ? value.call(me, seriesRoot, row, rowIdx) : value;
-           })
-           });
-           });
-           });
-           */
-          /*
-           var styleMapTemplate = {
-           'pan': {
-           'unselected': {
-           'normal': {},
-           'hover': {}
-           },
-           'selected': {
-           'normal': {},
-           'hover': {}
-           }
-           },
-           'zoombox': {
-           'unselected': {
-           'normal': {},
-           'hover': {}
-           },
-           'selected': {
-           'normal': {},
-           'hover': {}
-           }
-           },
-           'selection': {
-           'unselected': {
-           'normal': {},
-           'hover': {}
-           },
-           'selected': {
-           'normal': {},
-           'hover': {}
-           }
-           }
-           };
-           var modeKeys = _.keys(nodeStyleMap);
 
-           for (var t in modeKeys) {
-
-           //6500 2002
-
-           var modeName = modeKeys[t];
-           var stateKeys = _.keys(nodeStyleMap[modeName]);
-
-           for (var i in stateKeys) {
-
-           var stateName = stateKeys[i];
-           var actionKeys = _.keys(nodeStyleMap[modeName][stateName]);
-
-           for (var j in actionKeys) {
-
-           var actionName = actionKeys[j];
-           var attrList = _.keys(nodeStyleMap[modeName][stateName][actionName]);
-
-           for (var k in attrList) {
-
-           var attrName = attrList[k];
-           var attr = nodeStyleMap[modeName][stateName][actionName][attrName];
-
-           if (_.isFunction(attr)) {
-           //console.log(modeName + ' / ' + stateName + ' / ' + actionName + ' / ' + attrName);
-           styleMapTemplate[modeName][stateName][actionName][attrName] = nodeStyleMap[modeName][stateName][actionName][attrName].call(me, row, rowIdx);
-           }
-           }
-           }
-           }
-           }
-           */
           var shapeDefinition = me.shapeDefinition ? me.shapeDefinition[id] : undefined;
           var markerDefinition = me.markerDefinitions ? me.markerDefinitions[id] : undefined;
           var geoJSON = (me.mapMode === 'shapes') ? shapeDefinition : markerDefinition;
@@ -434,222 +516,13 @@ define([
 
         });
 
-        //console.log(series);
-        //return series;
-
-        //this.model.where({'id': this.mapMode})[0].set({'nodes' : series});
         seriesRoot.add(series);
-
-        //Build an hashmap from metadata
-        //var mapping = this.getMapping(values);
-        //TODO: Discover automatically which columns correspond to the key and to the value
-        // var idx = {
-        //   key: 0,
-        //   value: 1
-        // };
-
-        // var defaultShapeStyle = this.getStyleMap('shapes').unselected.default;
-
-        // // Attribute a color each shape
-        // var colormap = this.getColorMap();
-        // var qvalues = _.pluck(json.resultset, idx.value);
-        // var minValue = _.min(qvalues),
-        //   maxValue = _.max(qvalues);
-
-        // var me = this;
-        // _.each(json.resultset, function (row) {
-
-        //   var shapeDefinition = me.shapeDefinition[row[idx.key]];
-        //   var fillColor = me.mapColor(row[idx.value], minValue, maxValue, colormap);
-        //   var shapeStyle = _.defaults({
-        //     fillColor: fillColor
-        //   }, defaultShapeStyle);
-        //   var data = {
-        //     rawData: row,
-        //     key: row[idx.key],
-        //     value: row[idx.value],
-        //     minValue: minValue,
-        //     maxValue: maxValue
-        //   };
-
-        //   me.mapEngine.setShape(shapeDefinition, shapeStyle, data);
-        // });
-
-
-      },
-
-      resolveShapes: resolveShapes,
-      resolveMarkers: resolveMarkers,
-
-      init: function () {
-        //var inputOptions = {};
-        //this.inputDataHandler = new MapInputDataHandler(inputOptions);
-
-        var options = {
-          API_KEY: this.API_KEY || window.API_KEY, //either local or global API_KEY
-          tileServices: this.tileServices,
-          tileServicesOptions: this.tileServicesOptions
-        };
-
-
-        if (this.mapEngineType == 'google') {
-          this.mapEngine = new GoogleMapEngine(options);
-        } else {
-          this.mapEngine = new OpenLayersEngine(options);
-        }
-
-        return this.mapEngine.init().then(_.bind(function () {
-          var ph = this.placeholder().empty();
-          this._initControlPanel();
-          this._initPopup();
-          this._relayEvents();
-          this.mapEngine.renderMap(ph[0], this.tilesets);
-        }, this));
-      },
-
-      _initControlPanel: function () {
-        var $controlPanel = $('<div class="map-controls" />').appendTo(this.placeholder());
-        this.controlPanel = new ControlPanel($controlPanel);
-        this.controlPanel.render();
-        var eventMapping = {
-          'change:mode': function (model, value) {
-            var modes = {
-              'selection': this.setSelectionMode,
-              'zoombox': this.setZoomBoxMode,
-              'pan': this.setPanningMode
-            };
-            modes[value] && modes[value].call(this);
-          },
-          'zoom:in': this.mapEngine.zoomIn,
-          'zoom:out': this.mapEngine.zoomOut,
-        };
-
-        var me = this;
-        _.each(eventMapping, function (callback, event) {
-          if (_.isFunction(callback)) {
-            me.listenTo(me.controlPanel, event, _.bind(callback, me.mapEngine));
-          }
-        });
-
-
-        this.listenTo(this.controlPanel, 'selection:complete', function () {
-          me.processChange();
-        });
-      },
-
-      render: function (json) {
-
-        this.initModel(json);
-
-        // Mark selected model items
-        var idList = this.dashboard.getParameterValue(this.parameter);
-        this.setValue(idList);
-
-
-        var centerLatitude = parseFloat(this.centerLatitude);
-        var centerLongitude = parseFloat(this.centerLongitude);
-        this.mapEngine.render(this.model);
-        this.mapEngine.updateViewport(centerLongitude, centerLatitude, this.defaultZoomLevel);
-
-
-        // google mapEngine implementation will still fetch data asynchronously before ca
-        // so only here can we finish the lifecycle.
-        this.postExec();
-        this.maybeToggleBlock(false);
       },
 
 
-      _relayEvents: function () {
-        var engine = this.mapEngine;
-        var component = this;
-        var events = [
-          'marker:click', 'marker:mouseover', 'marker:mouseout',
-          'shape:click', 'shape:mouseover', 'shape:mouseout'
-        ];
-        _.each(events, function (event) {
-          component.listenTo(engine, event, function () {
-            var args = _.union([event], arguments);
-            component.trigger.apply(component, args);
-          });
-        });
-
-      },
-
-      _registerEvents: function () {
-        /** Registers handlers for mouse events
-         *
-         */
-        var me = this;
-        this.on('marker:click', function (event) {
-          return;
-          var result;
-          if (_.isFunction(me.markerClickFunction)) {
-            result = me.markerClickFunction(event);
-          }
-          if (result !== false) {
-            // built-in click handler for markers
-            me.markerClickCallback(event);
-          }
-        });
-
-        // Marker mouseover/mouseout events are not yet completely supported
-        // this.on('marker:mouseover', function(event){
-        //   // Logger.log('Marker mouseover');
-        // });
-        // this.on('marker:mouseout', function(event){
-        //   Logger.log('Marker mouseout');
-        // });
-
-        this.on('shape:mouseover', function (event) {
-          // Logger.log('Shape mouseover');
-          return;
-          //this.mapEngine.showPopup(event.data,  event.feature, 50, 20, "Hello", undefined, 'red'); //Poor man's popup, only seems to work with OpenLayers
-          if (_.isFunction(me.shapeMouseOver)) {
-            var result = me.shapeMouseOver(event);
-            if (result) {
-              result = _.isObject(result) ? result : {};
-              event.draw(_.defaults(result, {'zIndex': 1}, event.style));
-            }
-          }
-        });
-
-        this.on('shape:mouseout', function (event) {
-          //Logger.log('Shape mouseout');
-          return;
-          var result = {};
-          if (_.isFunction(me.shapeMouseOut)) {
-            result = me.shapeMouseOut(event);
-          }
-          result = _.isObject(result) ? result : {};
-          if (event.isSelected()) {
-            event.draw(_.defaults(result, event.getSelectedStyle()));
-          } else if (_.size(result) > 0) {
-            event.draw(_.defaults(result, event.style));
-          } else if (me.shapeMouseOver) {
-            event.draw(event.style);
-          }
-
-        });
-
-        this.on('shape:click', function (event) {
-          me.processChange();
-          return;
-          if (_.isFunction(me.shapeMouseClick)) {
-            var result = me.shapeMouseClick(event);
-            if (result) {
-              result = _.isObject(result) ? result : {};
-              var selStyle = _.defaults(result, event.style);
-              //event.setSelectedStyle(selStyle);
-              //event.draw(selStyle);
-            }
-          }
-        });
-      },
 
       getStyleMap: function (styleName) {
-
         // TODO: VERIFICAR A ORIGEM DESSE shapeDefinition e como se encaixa nos varios StyleMaps
-
         // switch (styleName){
         //   case 'shapes':
         //     return _.defaults({

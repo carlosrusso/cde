@@ -6,7 +6,7 @@ define([
 
   return resolveShapes;
 
-  function resolveShapes (shapeResolver, url, keys, json) {
+  function resolveShapes (shapeResolver, url, idList, json) {
     var addIn = this.getAddIn('ShapeResolver', shapeResolver);
     if (!addIn && url) {
       if (url.endsWith('json') || url.endsWith('js')) {
@@ -23,7 +23,7 @@ define([
 
     var tgt = this,
       st = {
-        keys: keys,
+        keys: idList, //TODO Consider keys -> ids
         tableData: json,
         _simplifyPoints: ShapeConversion.simplifyPoints,
         _parseShapeKey: this.parseShapeKey,

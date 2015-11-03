@@ -21,7 +21,8 @@ define([
   '../mapengine',
   'cdf/lib/OpenLayers',
   '../../model/SelectionStates',
-  'cdf/Logger'
+  'cdf/Logger',
+  'css!./style-openlayers2'
 ], function ($, _, MapEngine, OpenLayers, SelectionStates, Logger) {
 
   var OpenLayersEngine = MapEngine.extend({
@@ -88,11 +89,11 @@ define([
       return {
         latitude: coords.lat,
         longitude: coords.lon,
-        data: event.feature.attributes.data,
+        data: event.feature.attributes.data, //TODO review this
         feature: feature, // can refer to either the shape or the marker
         featureType: featureType,
-        style: event.feature.attributes.style, // currently only shape styles
-        marker: event.feature.attributes.marker, //marker-specific attributes
+        style: event.feature.attributes.style, // currently only shape styles //TODO review this
+        marker: event.feature.attributes.marker, //marker-specific attributes //TODO review this, eventually remove
         mapEngineType: 'openlayers2',
         draw: function (style) {
           // currently only makes sense to be called on shape callbacks
@@ -114,16 +115,6 @@ define([
       };
     },
 
-    render: function (model) {
-      this.model = model;
-      var me = this;
-      model.flatten()
-        .filter(function (m) {
-          return m.children() == null;
-        }).each(function (m) {
-          me.renderItem(m);
-        });
-    },
 
     renderItem: function (modelItem) {
       if (!modelItem) {

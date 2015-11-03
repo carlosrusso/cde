@@ -56,6 +56,17 @@ define([
         unselected: {
           normal: {
             fill: 'gray'
+          },
+          hover: {
+            fill: 'orange'
+          }
+        },
+        selected: {
+          normal: {
+            fill: 'red'
+          },
+          hover: {
+            fill: 'darkred'
           }
         }
       }
@@ -81,6 +92,13 @@ define([
           },
           hover: {
             fill: 'darkred'
+          }
+        }
+      },
+      selection: {
+        unselected: {
+          normal: {
+            fill: 'gray'
           }
         }
       }

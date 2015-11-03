@@ -15,7 +15,8 @@ define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
   '../mapengine',
-  './MapComponentAsyncLoader'
+  './MapComponentAsyncLoader',
+  'css!./style-google'
 ], function ($, _, MapEngine, MapComponentAsyncLoader) {
 
   function OurMapOverlay(startPoint, width, height, htmlContent, popupContentDiv, map, borderColor) {

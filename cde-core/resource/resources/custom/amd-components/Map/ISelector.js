@@ -15,7 +15,7 @@ define([], function () {
     },
 
     /**
-     * Updates the selection state of the filter
+     * Sets the selection state
      * @method setValue
      * @public
      * @param {Array} value List of strings containing the IDs of the selected items,
@@ -29,6 +29,12 @@ define([], function () {
         throw 'Model is not initialized';
       }
       return this;
+    },
+
+    updateSelection: function(){
+      // Mark selected model items
+      var idList = this.dashboard.getParameterValue(this.parameter);
+      this.setValue(idList);
     },
 
     /**

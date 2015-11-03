@@ -1,7 +1,8 @@
 define([
   'cdf/lib/jquery',
-  'amd!cdf/lib/underscore'
-], function ($, _) {
+  'amd!cdf/lib/underscore',
+  './getMapping'
+], function ($, _, getMapping) {
 
   return resolveMarkers;
 
@@ -77,8 +78,8 @@ define([
         coordinates: [longitude, latitude],
         type: "Point",
         properties: {
-          Latitude: latitude,
-          Longitude: longitude
+          latitude: latitude,
+          longitude: longitude
         }
       },
       type: "Feature"
@@ -87,64 +88,6 @@ define([
   }
 
 
-  function getMapping(json) {
-    var map = {};
 
-    if (!json.metadata || json.metadata.length == 0)
-      return map;
-
-    //Iterate through the metadata. We are looking for the following columns:
-    // * address or one or more of 'Country', 'State', 'Region', 'County', 'City'
-    // * latitude and longitude - if found, we no longer care for address
-    // * description - Description to show on mouseover
-    // * marker - Marker image to use - usually this will be an url
-    // * markerWidth - Width of the marker
-    // * markerHeight - Height of the marker
-    // * popupContents - Contents to show on popup window
-    // * popupWidth - Width of the popup window
-    // * popupHeight - Height of the popup window
-
-    var colToPropertyMapping = { // colName -> property
-      'description': 'description',
-      'marker': 'marker',
-      'markerwidth': 'markerWidth',
-      'markerheight': 'markerHeight',
-      'popupcontents': 'popupContents',
-      'popupwidth': 'popupWidth',
-      'popupheight': 'popupHeight'
-    };
-    _.each(json.metadata, function (elt, i) {
-
-      var colName = elt.colName.toLowerCase();
-      var property = colToPropertyMapping[colName];
-      if (property){
-        map[property] = i;
-      }
-
-      switch (colName) {
-        case 'latitude':
-          map.addressType = 'coordinates';
-          map.latitude = i;
-          break;
-        case 'longitude':
-          map.addressType = 'coordinates';
-          map.longitude = i;
-          break;
-        case 'address':
-          if (!map.addressType) {
-            map.address = i;
-            map.addressType = 'address';
-          }
-          break;
-        default:
-          map[elt.colName.toLowerCase()] = i;
-          break;
-        // if ($.inArray(values.metadata[0].colName, ['Country', 'State', 'Region', 'County', 'City'])) {
-      }
-
-    });
-
-    return map;
-  }
 
 });
