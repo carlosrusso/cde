@@ -1,7 +1,8 @@
 define([
   'cdf/lib/jquery',
-  'amd!cdf/lib/underscore'
-], function ($, _) {
+  'amd!cdf/lib/underscore',
+  './getMapping'
+], function ($, _, getMapping) {
 
   return resolveMarkers;
 
@@ -21,8 +22,8 @@ define([
     var markerDefinitions;
     if (mapping.addressType === 'coordinates') {
       markerDefinitions = _.chain(json.resultset)
-        .map(function (row, rowIdx) {
-          var key = row[0];
+        .map(function (row) {
+          var key = row[0]; //TODO: remove hardcoding of index
           var location = [row[mapping.longitude], row[mapping.latitude]];
           return [key, createFeatureFromLocation(location)];
         })
@@ -77,8 +78,8 @@ define([
         coordinates: [longitude, latitude],
         type: "Point",
         properties: {
-          Latitude: latitude,
-          Longitude: longitude
+          latitude: latitude,
+          longitude: longitude
         }
       },
       type: "Feature"
@@ -87,70 +88,6 @@ define([
   }
 
 
-  function getMapping(json) {
-    var map = {};
 
-    if (!json.metadata || json.metadata.length == 0)
-      return map;
-
-    //Iterate through the metadata. We are looking for the following columns:
-    // * address or one or more of 'Country', 'State', 'Region', 'County', 'City'
-    // * latitude and longitude - if found, we no longer care for address
-    // * description - Description to show on mouseover
-    // * marker - Marker image to use - usually this will be an url
-    // * markerWidth - Width of the marker
-    // * markerHeight - Height of the marker
-    // * popupContents - Contents to show on popup window
-    // * popupWidth - Width of the popup window
-    // * popupHeight - Height of the popup window
-
-    _.each(json.metadata, function (elt, i) {
-
-      switch (elt.colName.toLowerCase()) {
-        case 'latitude':
-          map.addressType = 'coordinates';
-          map.latitude = i;
-          break;
-        case 'longitude':
-          map.addressType = 'coordinates';
-          map.longitude = i;
-          break;
-        case 'description':
-          map.description = i;
-          break;
-        case 'marker':
-          map.marker = i;
-          break;
-        case 'markerwidth':
-          map.markerWidth = i;
-          break;
-        case 'markerheight':
-          map.markerHeight = i;
-          break;
-        case 'popupcontents':
-          map.popupContents = i;
-          break;
-        case 'popupwidth':
-          map.popupWidth = i;
-          break;
-        case 'popupheight':
-          map.popupHeight = i;
-          break;
-        case 'address':
-          if (!map.addressType) {
-            map.address = i;
-            map.addressType = 'address';
-          }
-          break;
-        default:
-          map[elt.colName.toLowerCase()] = i;
-          break;
-        // if ($.inArray(values.metadata[0].colName, ['Country', 'State', 'Region', 'County', 'City'])) {
-      }
-
-    });
-
-    return map;
-  }
 
 });

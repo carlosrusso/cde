@@ -16,15 +16,14 @@
  *
  */
 define([
-  '../mapengine',
-  '../MapComponentAsyncLoader',
-  '../../model/SelectionStates',
-  'cdf/Logger',
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
+  '../mapengine',
   'cdf/lib/OpenLayers',
-  'cdf/lib/OpenStreetMap'
-], function (MapEngine, loadGoogleMaps, SelectionStates, Logger, $, _, OpenLayers) {
+  '../../model/SelectionStates',
+  'cdf/Logger',
+  'css!./style-openlayers2'
+], function ($, _, MapEngine, OpenLayers, SelectionStates, Logger) {
 
   var OpenLayersEngine = MapEngine.extend({
     map: undefined,
@@ -36,28 +35,6 @@ define([
       this.layers = {}; // map layers
       this.controls = {}; // map controls
     },
-    init: function (tilesets) {
-      this.tilesets = tilesets;
-      Logger.log('Requested tilesets:' + JSON.stringify(tilesets), 'debug');
-
-      var contains = function (v) {
-        return _.some(tilesets, function (tileset) {
-          //Logger.log(tileset, 'debug');
-          return tileset.search(v) >= 0;
-        });
-      };
-
-      var deferred;
-      if (contains('googleXXX')) {
-        // This is (probably) only needed if we use the OpenLayers.Layer.Google API,
-        deferred = $.when(loadGoogleMaps('3', this.API_KEY));
-      } else {
-        deferred = $.Deferred();
-        deferred.resolve();
-      }
-      return deferred.promise();
-    },
-
 
     toNativeStyle: function (foreignStyle) {
       var conversionTable = {
@@ -98,7 +75,7 @@ define([
     },
 
     wrapEvent: function (event, featureType) {
-      var lastXy = this.map.getControlsByClass('OpenLayers.Control.MousePosition')[0].lastXy; // || {x: undefined, y: undefined};
+      var lastXy = this.controls.mousePosition.lastXy; // || {x: undefined, y: undefined};
       var coords;
       if (lastXy) {
         coords = this.map.getLonLatFromPixel(lastXy)
@@ -107,22 +84,23 @@ define([
       } else {
         coords = {lat: undefined, lon: undefined};
       }
-      var feature = event.feature.layer.getFeatureById(event.feature.id);
+      var feature = event.feature; //.layer.getFeatureById(event.feature.id);
       var myself = this;
       return {
+        id: event.feature.attributes.model.get('id'),
         latitude: coords.lat,
         longitude: coords.lon,
-        data: event.feature.attributes.data,
+        data: event.feature.attributes.model.get('data'), //TODO review this
         feature: feature, // can refer to either the shape or the marker
         featureType: featureType,
-        style: event.feature.attributes.style, // currently only shape styles
-        marker: event.feature.attributes.marker, //marker-specific attributes
+        style: event.feature.attributes.style, // currently only shape styles //TODO review this
         mapEngineType: 'openlayers2',
         draw: function (style) {
           // currently only makes sense to be called on shape callbacks
           var validStyle = myself.toNativeStyle(style);
           event.feature.layer.drawFeature(feature, validStyle);
         },
+        // TODO: BEGIN code that must die
         setSelectedStyle: function (style) {
           event.feature.attributes.clickSelStyle = style;
         },
@@ -132,73 +110,23 @@ define([
         isSelected: function () {
           return event.feature == event.feature.layer.selectedFeatures[0];
         },
+        // END code that must die
         raw: event
       };
     },
 
-    render: function (model) {
-      this.model = model;
-      var me = this;
 
-      //this.model.where({id: 'markers'}).flatten().reject(function(m){ return m.children(); }).each(function (m) {
-      //  me._renderMarker(m);
-      //});
-      //this.model.where({id: 'shapes'}).each(function (m) {
-      //  me._renderShape(m);
-      //});
-
-      // this.model.flatten().reject(function(m){ return m.children(); }).each(function (m) {
-      //   console.log(m);
-      // });
-
-      model.flatten().filter(function (m) {
-        return m.children() == null;
-      }).each(function (m) {
-
-        // var featureStyle = m.getStyle(); 
-
-        // TODO: achar forma melhor de fazer.
-        // A segunda posicao se refere ao tipo da feature
-        if (m.getFeatureType()[1] == 'shapes') {
-          me._renderShape(m);
-        } else {
-          me._renderMarker(m);
-        }
-
-      });
-
-    },
-
-    _renderMarker: function (modelItem) {
+    renderItem: function (modelItem) {
+      if (!modelItem) {
+        return;
+      }
       var row = modelItem.get('rawData');
       var data = {
-        model: modelItem,
         rawData: row,
         key: row && row[0]
         //value: row[idx.value],
       };
-      this._renderItem(modelItem, data, this.layers.markers);
-    },
-    _renderShape: function (modelItem) {
-      var idx = {
-        key: 0,
-        value: 1
-      };
-      var row = modelItem.get('rawData');
-      var data = {
-        model: modelItem,
-        rawData: row,
-        key: row[idx.key],
-        value: row[idx.value]
-      };
-      this._renderItem(modelItem, data, this.layers.shapes);
-    },
-
-    _renderItem: function (modelItem, data, layer) {
-      if (!modelItem) {
-        return;
-      }
-
+      var layer = this.layers[modelItem.getFeatureType()[1]];
       var geoJSON = modelItem.get('geoJSON');
       var me = this;
       $.when(geoJSON).then(function (feature) {
@@ -206,11 +134,10 @@ define([
           return;
         }
         var f = me._geoJSONParser.parseFeature(feature);
-        //var selectionState = (modelItem.getSelection() === SelectionStates.ALL) ? 'selected' : 'unselected';
-        //var style = modelItem.getStyle('pan', selectionState, 'normal');
         var style = modelItem.inferStyle('normal');
         $.extend(true, f, {
-          data: {
+          attributes: {
+            model: modelItem,
             data: data
           },
           style: me.toNativeStyle(style)
@@ -220,7 +147,7 @@ define([
 
     },
 
-    setMarker: function (markerInfo, description, data) {
+    __setMarker: function (markerInfo, description, data) {
       var proj = new OpenLayers.Projection('EPSG:4326'),  // transform from WGS 1984 //4326
         mapProj = this.map.getProjectionObject();
       var point = new OpenLayers.LonLat(markerInfo.longitude, markerInfo.latitude).transform(
@@ -260,26 +187,6 @@ define([
 
     },
 
-    setShape: function (multiPolygon, shapeStyle, data) {
-      if (!multiPolygon) {
-        return;
-      }
-      var feature = this._geoJSONParser.parseFeature(multiPolygon);
-      $.extend(true, feature, {
-        attributes: {
-          //data: data,
-          //style: shapeStyle
-          style: this.toNativeStyle(shapeStyle)
-        },
-        data: {
-          data: data,
-          style: shapeStyle
-        },
-        style: this.toNativeStyle(shapeStyle)
-      });
-      this.layers.shapes.addFeatures([feature]);
-    },
-
 
     showPopup: function (data, mapElement, popupHeight, popupWidth, contents, popupContentDiv, borderColor) {
 
@@ -315,7 +222,10 @@ define([
       this.map.addPopup(popup, true);
     },
 
-    renderMap: function (target) {
+    renderMap: function (target, tilesets) {
+      this.tilesets = tilesets;
+      Logger.log('Requested tilesets:' + JSON.stringify(tilesets), 'debug');
+
       var projectionMap = new OpenLayers.Projection('EPSG:900913');
       var projectionWGS84 = new OpenLayers.Projection('EPSG:4326');
 
@@ -337,7 +247,6 @@ define([
           new OpenLayers.Control.LayerSwitcher({'ascending': false}),
           new OpenLayers.Control.ScaleLine(),
           new OpenLayers.Control.KeyboardDefaults(),
-          new OpenLayers.Control.MousePosition(),
           new OpenLayers.Control.Attribution(),
           new OpenLayers.Control.TouchNavigation()
         ]
@@ -346,12 +255,25 @@ define([
         mapOptions.tileManager = new OpenLayers.TileManager();
       }
       this.map = new OpenLayers.Map(target, mapOptions);
+
+
+      this.addLayers();
+      this.addControls();
+      this.registerViewportEvents();
+
+      this._geoJSONParser = new OpenLayers.Format.GeoJSON({
+        ignoreExtraDims: true,
+        internalProjection: this.map.getProjectionObject(),
+        externalProjection: projectionWGS84
+      });
+    },
+
+    addLayers: function () {
       var me = this;
       _.each(this.tilesets, function (thisTileset) {
         var layer;
         var tileset = thisTileset.slice(0).split('-')[0],
           variant = thisTileset.slice(0).split('-').slice(1).join('-') || 'default';
-        Logger.log('Tilesets: ' + JSON.stringify(this.tilesets) + ', handling now :' + thisTileset + ', ie tileset ' + tileset + ', variant ' + variant);
         switch (tileset) {
           case 'googleXXX':
             layer = new OpenLayers.Layer.Google('Google Streets', {visibility: true, version: '3'});
@@ -378,73 +300,6 @@ define([
         me.layers[thisTileset] = layer;
       });
 
-      // this.layers.shapes.style = new OpenLayers.StyleMap({
-      //   'default': {
-      //     fillColor: '#aaaaaa',
-      //     graphicZIndex: 0
-      //   },
-      //   'select': {
-      //     fillColor: '#0000ff',
-      //     graphicZIndex: 1
-      //   }
-      // });
-
-      /*
-
-       var style = OpenLayers.Util.extend({}, OpenLayers.Feature.Vector.style['default']);
-
-       style.fillColor = '${fillColor}';
-       style.fillOpacity = '${fillOpacity}';
-       style.strokeWidth = '${strokeWidth}';
-       me.graphicZIndex = '${graphicZIndex}';
-       style.strokeColor = '${strokeColor}';
-
-       var olStyle = new OpenLayers.Style(style, {
-       context: {
-       fillColor: function (feature) {
-       // if (feature.hasOwnProperty('attributes')) {
-       //   if (feature.attributes.hasOwnProperty('style')) {
-       //     if (feature.attributes.style.hasOwnProperty('fillColor')) {
-       //       return feature.attributes.style.fillColor;
-       //     }
-       //   }
-       // }
-
-       // return me.model.where({id : feature.data.data.key})[0].getStyle('pan')['unselected']['normal'].fillColor;
-       return 'blue';
-       },
-
-       strokeColor: function (feature) {
-       return 'black';
-       }
-       }
-       });
-
-       // var olOver = new OpenLayers.Style({
-       //   fillColor: 'red'
-       // });
-
-       var olOver = new OpenLayers.Style(style, {
-       context: {
-       fillColor: function (feature) {
-       // return me.model.where({id : feature.data.data.key})[0].getStyle('pan')['unselected']['normal'].fillColor;
-       return 'green';
-       }
-       }
-       });
-
-       var olSelect = new OpenLayers.Style({
-       fillColor: 'blue'
-       });
-
-       var olStyleMap = new OpenLayers.StyleMap({
-       'default': olStyle,
-       'select': olSelect,
-       'temporary': olOver
-       });
-
-       */
-
       // add layers for the markers and for the shapes
       this.layers.shapes = new OpenLayers.Layer.Vector('Shapes', {
         //styleMap: olStyleMap,
@@ -456,46 +311,30 @@ define([
       this.layers.markers = new OpenLayers.Layer.Vector('Markers');
 
       this.map.addLayers([this.layers.shapes, this.layers.markers]);
-      this.setCallbacks();
-
-      // add box selector controler
-      this.controls.boxSelector = new OpenLayers.Control.SelectFeature([this.layers.shapes, this.layers.markers], {
-        clickout: true,
-        toggle: true,
-        multiple: true,
-        hover: false,
-        box: true
-      });
-      this.map.addControl(this.controls.boxSelector);
-
-      // add zoom box controler
-      this.controls.zoomBox = new OpenLayers.Control.ZoomBox();
-      this.map.addControl(this.controls.zoomBox);
-
-
-      this._geoJSONParser = new OpenLayers.Format.GeoJSON({
-        ignoreExtraDims: true,
-        internalProjection: this.map.getProjectionObject(),
-        externalProjection: projectionWGS84
-      });
     },
 
     setPanningMode: function () {
       console.log('Panning mode enable');
-      this.controls.boxSelector.deactivate();
+      this.controls.clickCtrl.activate();
       this.controls.zoomBox.deactivate();
+      this.controls.boxSelector.deactivate();
+      this.updateFeatures();
     },
 
     setZoomBoxMode: function () {
       console.log('Zoom mode enable');
-      this.controls.boxSelector.deactivate();
+      this.controls.clickCtrl.deactivate();
       this.controls.zoomBox.activate();
+      this.controls.boxSelector.deactivate();
+      this.updateFeatures();
     },
 
     setSelectionMode: function () {
       console.log('Selection mode enable');
-      this.controls.zoomBox.deactivate();
+      this.controls.clickCtrl.deactivate();
       this.controls.boxSelector.activate();
+      this.controls.zoomBox.deactivate();
+      this.updateFeatures();
     },
 
     zoomIn: function () {
@@ -542,42 +381,61 @@ define([
 
     },
 
-    setCallbacks: function () {
-      registerViewportEvents.call(this);
+    addControls: function () {
+      this._addControlMousePosition();
       this._addControlHover();
       this._addControlClick();
+      this._addControlBoxSelector();
+      this._addControlZoomBox();
+    },
+
+    _addControlMousePosition: function () {
+      this.controls.mousePosition = new OpenLayers.Control.MousePosition();
+      this.map.addControl(this.controls.mousePosition);
+    },
+
+    _addControlBoxSelector: function () {
+      // add box selector controler
+      this.controls.boxSelector = new OpenLayers.Control.SelectFeature([this.layers.shapes, this.layers.markers], {
+        clickout: true,
+        toggle: true,
+        multiple: true,
+        hover: false,
+        box: true
+      });
+      this.map.addControl(this.controls.boxSelector);
+
+    },
+
+    _addControlZoomBox: function () {
+      // add zoom box controler
+      this.controls.zoomBox = new OpenLayers.Control.ZoomBox();
+      this.map.addControl(this.controls.zoomBox);
     },
 
     _addControlHover: function () {
       var me = this;
 
       function event_relay(e) {
-        var prefix;
-        if (e.feature.layer.name == 'Shapes') {
-          prefix = 'shape';
-        } else {
-          prefix = 'marker';
-        }
+        var featureType = getLayerFromEvent(e);
+
         var events = {
           'featurehighlighted': 'mouseover',
           'featureunhighlighted': 'mouseout'
         };
 
-        var model = e.feature.data.data.model;
+        var model = e.feature.attributes.model;
         var styles = {
           'featurehighlighted': model.inferStyle('hover'),
           'featureunhighlighted': model.inferStyle('normal')
         };
 
-        console.log('hoverCtrl', prefix, e.type, styles[e.type]);
+        //console.log('hoverCtrl', featureType, e.type, styles[e.type]);
         if (events[e.type]) {
-          if (e.type === 'featureselected') {
-            console.log('Feature Selected!');
-          }
           var style = me.toNativeStyle(styles[e.type]);
           e.feature.style = style;
           e.feature.layer.drawFeature(e.feature, style);
-          me.trigger(prefix + ':' + events[e.type], me.wrapEvent(e));
+          me.trigger(featureType + ':' + events[e.type], me.wrapEvent(e));
         }
       }
 
@@ -634,8 +492,6 @@ define([
       this.controls.hoverCtrl.handlers['feature'].stopDown = false;
       this.map.addControl(this.controls.hoverCtrl);
       this.controls.hoverCtrl.activate();
-
-
     },
 
     _addControlClick: function () {
@@ -650,54 +506,54 @@ define([
       var me = this;
       var createEventHandler = function (callback) {
         return function (e) {
-          console.log(e.type, e.feature.data.data.key);
-          var id = e.feature.data.data.key;
-          var model = me.model.findWhere({id: id});
+          var model = e.feature.attributes.model;
           var style = me.toNativeStyle(callback(model));
           e.feature.style = style;
           e.feature.layer.drawFeature(e.feature, style);
-          //myself.trigger('shape:click', myself.wrapEvent(e));
+          var featureType = getLayerFromEvent(e);
+          me.trigger(featureType + ':click', me.wrapEvent(e));
         }
       };
       var eventHandlers = {
-        //'featurehighlighted': createEventHandler(function(model){
-        //  return model.inferStyle('hover');
-        //}),
-        'featureselected': createEventHandler(function(model){
+        'featureselected': createEventHandler(function (model) {
           model.setSelection(SelectionStates.ALL);
-          return model.inferStyle('hover');
+          var actionMap = {
+            'pan': 'hover',
+            'zoombox': 'hover',
+            'selection': 'normal'
+          };
+          var action = actionMap[model.root().get('mode')];
+          return model.inferStyle(action);
         }),
-        'featureunselected': createEventHandler(function(model){
+        'featureunselected': createEventHandler(function (model) {
           model.setSelection(SelectionStates.NONE);
-          return model.inferStyle('normal');
+          var actionMap = {
+            'pan': 'normal',
+            'zoombox': 'normal',
+            'selection': 'hover'
+          };
+          var action = actionMap[model.root().get('mode')];
+          return model.inferStyle(action);
         })
       };
 
-      /*
-       this.layers.markers.events.on({
-       featurehighlighted: function (e) {
-       myself.trigger('marker:mouseover', myself.wrapEvent(e));
-       },
-       featureunhighlighted: function (e) {
-       myself.trigger('marker:mouseout', myself.wrapEvent(e));
-       },
-       featureselected: function (e) {
-       myself.trigger('marker:click', myself.wrapEvent(e));
-       // The feature remains selected after we close the popup box, which disables clicking on the same box.
-       // Thus we enforce that no marker is selected.
-       myself.controls.clickCtrl.unselectAll();
-       }
-       });
-       */
-
       this.layers.markers.events.on(eventHandlers);
+      this.layers.shapes.events.on(eventHandlers);
       // letting marker events fall through
       this.layers.markers.events.fallThrough = true;
-
-      this.layers.shapes.events.on(eventHandlers);
-      // letting shapes events fall through
       this.layers.shapes.events.fallThrough = true;
 
+    },
+
+    updateFeatures: function () {
+      var me = this;
+      var features = _.union(this.layers.shapes.features, this.layers.markers.features);
+      _.each(features, function (f) {
+        var model = f.attributes.model;
+        var style = me.toNativeStyle(model.inferStyle('normal'));
+        f.style = style;
+        f.layer.drawFeature(f, style);
+      });
     },
 
     tileLayer: function (name) {
@@ -707,70 +563,81 @@ define([
       }, this.tileServicesOptions[name] || {});
       return new OpenLayers.Layer.XYZ(name, this._switchUrl(urlTemplate), _.extend({}, options));
 
+    },
+
+    registerViewportEvents: function () {
+      var me = this;
+      var eventMap = {
+        'zoomend': 'map:zoom',
+        'movestart': 'map:center'
+      };
+      _.each(eventMap, function (mapEvent, engineEvent) {
+        me.map.events.register(engineEvent, me.map, function (e) {
+          var wrappedEvent = wrapViewportEvent.call(me, e);
+          me.trigger(mapEvent, wrappedEvent);
+        });
+      });
+
+      function wrapViewportEvent(e) {
+        var mapProj = this.map.getProjectionObject();
+        var wsg84 = new OpenLayers.Projection('EPSG:4326');
+        var transformPoint = function (centerPoint) {
+          var center;
+          if (centerPoint) {
+            var p = centerPoint.clone().transform(mapProj, wsg84);
+            center = {
+              latitude: p.lat,
+              longitude: p.lon
+            };
+          } else {
+            center = {
+              latitude: undefined,
+              longitude: undefined
+            };
+          }
+          return center;
+        };
+
+        var extentObj = e.object.getExtent();
+        var viewport = {
+          northEast: {},
+          southWest: {}
+        };
+        if (extentObj) {
+          var extentInLatLon = extentObj.transform(mapProj, wsg84);
+          viewport = {
+            northEast: {
+              latitude: extentInLatLon.top,
+              longitude: extentInLatLon.right
+            },
+            southWest: {
+              latitude: extentInLatLon.bottom,
+              longitude: extentInLatLon.left
+            }
+          };
+        }
+        var wrappedEvent = {
+          zoomLevel: e.object.getZoom(),
+          center: transformPoint(e.object.center),
+          viewport: viewport,
+          raw: e
+        };
+        return wrappedEvent;
+      }
     }
   });
 
-  function registerViewportEvents() {
-    var me = this;
-    var eventMap = {
-      'zoomend': 'map:zoom',
-      'movestart': 'map:center'
-    };
-    _.each(eventMap, function (mapEvent, engineEvent) {
-      me.map.events.register(engineEvent, me.map, function (e) {
-        var wrappedEvent = wrapViewportEvent.call(me, e);
-        me.trigger(mapEvent, wrappedEvent);
-      });
-    });
-    function wrapViewportEvent(e) {
-      var mapProj = this.map.getProjectionObject();
-      var wsg84 = new OpenLayers.Projection('EPSG:4326');
-      var transformPoint = function (centerPoint) {
-        var center;
-        if (centerPoint) {
-          var p = centerPoint.clone().transform(mapProj, wsg84);
-          center = {
-            latitude: p.lat,
-            longitude: p.lon
-          };
-        } else {
-          center = {
-            latitude: undefined,
-            longitude: undefined
-          };
-        }
-        return center;
-      };
-
-      var extentObj = e.object.getExtent();
-      var viewport = {
-        northEast: {},
-        southWest: {}
-      };
-      if (extentObj) {
-        var extentInLatLon = extentObj.transform(mapProj, wsg84);
-        viewport = {
-          northEast: {
-            latitude: extentInLatLon.top,
-            longitude: extentInLatLon.right
-          },
-          southWest: {
-            latitude: extentInLatLon.bottom,
-            longitude: extentInLatLon.left
-          }
-        };
-      }
-      var wrappedEvent = {
-        zoomLevel: e.object.getZoom(),
-        center: transformPoint(e.object.center),
-        viewport: viewport,
-        raw: e
-      };
-      return wrappedEvent;
+  function getLayerFromEvent(e) {
+    var layer;
+    if (e.feature.layer.name == 'Shapes') {
+      layer = 'shape';
+    } else {
+      layer = 'marker';
     }
+    return layer;
   }
-
 
   return OpenLayersEngine;
 
-});
+})
+;

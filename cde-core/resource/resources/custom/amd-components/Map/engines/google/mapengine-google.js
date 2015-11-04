@@ -15,7 +15,8 @@ define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
   '../mapengine',
-  '../MapComponentAsyncLoader'
+  './MapComponentAsyncLoader',
+  'css!./style-google'
 ], function ($, _, MapEngine, MapComponentAsyncLoader) {
 
   function OurMapOverlay(startPoint, width, height, htmlContent, popupContentDiv, map, borderColor) {
@@ -42,8 +43,7 @@ define([
     overlays: [],
     API_KEY: false,
     selectedFeature: undefined,
-    init: function (tilesets) {
-      this.tilesets = tilesets;
+    init: function () {
       return $.when(MapComponentAsyncLoader('3', this.API_KEY)).then(
         function (status) {
           OurMapOverlay.prototype = new google.maps.OverlayView();
@@ -285,7 +285,8 @@ define([
     },
 
 
-    renderMap: function (target) {
+    renderMap: function (target, tilesets) {
+      this.tilesets = tilesets;
 
       var myOptions = {
         mapTypeId: google.maps.MapTypeId.ROADMAP
