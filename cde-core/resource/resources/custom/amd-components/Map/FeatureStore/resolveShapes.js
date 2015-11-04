@@ -31,10 +31,10 @@ define([
         _shapeSource: url
       };
     var promise = addIn.call(tgt, st, this.getAddInOptions('ShapeResolver', addIn.getName()));
-    promise.then(function (result) {
+    $.when(promise).then(function (result) {
       var shapeDefinitions = _.chain(result)
         .map(function (geoJSONFeature, key) {
-          return [key, geoJSONFeature]; //decode geojson to native format
+          return [key, geoJSONFeature];
         })
         .object()
         .value();

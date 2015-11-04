@@ -97,8 +97,7 @@ define([
             getMapping,
             resolveShapes, resolveMarkers,
             Styles, _tileServices,
-            OpenLayersEngine, GoogleMapEngine
-  ) {
+            OpenLayersEngine, GoogleMapEngine) {
 
 
     var NewMapComponent = UnmanagedComponent.extend(ISelector).extend(ColorMapMixin).extend({
@@ -385,8 +384,7 @@ define([
 
       },
 
-      visualRoles: {
-      },
+      visualRoles: {},
 
       scales: {
         fill: 'default', //named colormap, or a colormap definition
@@ -528,82 +526,76 @@ define([
         return styleMap;
       },
 
-      _processMarkerImages: function(){
-
-      },
-
-      _renderMarker: function (location, row, mapping, position) {
-        var myself = this;
-        if (location === undefined) {
-          Logger.log('Unable to get location for address ' + row[mapping.address] + '. Ignoring element.', 'debug');
-          return true;
+      _processMarkerImages: function () {
+        var markersRoot = this.model.findWhere({id: 'markers'});
+        if (!markersRoot) {
+          return;
         }
 
-        var markerIcon;
-        var description;
-
-        var markerWidth = myself.markerWidth;
-        if (mapping.markerWidth) {
-          markerWidth = row[mapping.markerWidth];
-        }
-        var markerHeight = myself.markerHeight;
-        if (mapping.markerHeight) {
-          markerHeight = row[mapping.markerHeight];
-        }
-
-        var defaultMarkers = false;
-
-        if (mapping.marker) {
-          markerIcon = row[mapping.marker];
-        }
-        if (markerIcon == undefined) {
-          var st = {
-            data: row,
-            position: position,
-            width: markerWidth,
-            height: markerHeight
-          };
-          var addinName = this.markerImageGetter;
-
-          //Check for cgg graph marker
-          if (this.markerCggGraph) {
-            st.cggGraphName = this.markerCggGraph;
-            st.parameters = {};
-            _.each(this.cggGraphParameters, function (parameter) {
-              st.parameters[parameter[0]] = row[mapping[parameter[1]]];
-            });
-            addinName = 'cggMarker';
-          } else {
-            //Else resolve to urlMarker addin
-            st.url = myself.marker;
-            defaultMarkers = (myself.marker == undefined);
-            addinName = 'urlMarker';
-          }
-
-          if (!addinName) {
-            addinName = 'urlMarker';
-          }
-          var addIn = this.getAddIn("MarkerImage", addinName);
-          markerIcon = addIn.call(this.placeholder(), st, this.getAddInOptions("MarkerImage", addIn.getName()));
-        }
-        if (mapping.description) {
-          description = row[mapping.description];
-        }
-
-
-        var markerInfo = { // hack to pass marker information to the mapEngine. This information will be included in the events
-          longitude: location[0],
-          latitude: location[1],
-          defaultMarkers: defaultMarkers,
-          position: position,
-          mapping: mapping,
-          icon: markerIcon,
-          width: markerWidth,
-          height: markerHeight
+        var state = {
+          height: this.markerHeight,
+          width: this.markerWidth,
+          url: this.marker
         };
 
-        Logger.log('About to render ' + markerInfo.longitude + ' / ' + markerInfo.latitude + ' with marker sized ' + markerHeight + ' / ' + markerWidth + 'and description ' + description, 'debug');
-        myself.mapEngine.setMarker(markerInfo, description, row);
+        markersRoot.flatten()
+          .filter(function (m) {
+            // just the leafs
+            return m.children() == null;
+          })
+          .each(_.bind(processRow, this))
+          .value();
+
+        function processRow(m) {
+          var mapping = this.mapping;
+          var row = m.get('rawData');
+          var st = $.extend(true, {}, state, {
+            data: row,
+            position: m.get('rowIdx'),
+            height: row[mapping.markerHeight],
+            width: row[mapping.markerWidth]
+          });
+
+
+          // Select addIn, consider all legacy special cases
+          var addinName,
+            extraSt = {},
+            extraOpts = {};
+          if (this.markerCggGraph) {
+            addinName = 'cggMarker';
+            extraSt = {
+              cggGraphName: this.markerCggGraph,
+              parameters: _.object(_.map(this.cggGraphParameters, function (parameter) {
+                return [parameter[0], row[mapping[parameter[1]]]];
+              }))
+            };
+          } else {
+            addinName = this.markerImageGetter;
+          }
+
+          // Invoke addIn
+          var addIn = this.getAddIn("MarkerImage", addinName);
+          if (!addIn) {
+            return;
+          }
+          $.extend(true, st, extraSt);
+          var opts = $.extend(true, {}, this.getAddInOptions("MarkerImage", addIn.getName()), extraOpts);
+          var markerIconUrl = addIn.call(this.placeholder(), st, opts);
+
+          // Update model's style
+          $.extend(true, m.attributes.styleMap, {
+            pan: {
+              unselected: {
+                normal: {
+                  // TODO: works for now, for openlayers. must improve this
+                  graphicWidth: st.width,
+                  graphicHeight: st.height,
+                  externalGraphic: markerIconUrl
+                }
+              }
+            }
+          });
+        }
       },
 
       /**

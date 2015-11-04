@@ -37,25 +37,16 @@ define([
             labelAlign: 'cm',
             labelYOffset: -20,
             fill: 'red',
-            //stroke: '#ffffff',
             strokeWidth: 2,
             fillOpacity: 0.4
           },
           hover: {
-            //fill: 'orange',
-            //stroke: "black",
-            label: 'Ouch!'
           }
         },
         selected: {
           normal: {
-            //fill: 'darkred',
-            label: 'Selected'
           },
           hover: {
-            //fill: 'darkorange',
-            //stroke: "black",
-            label: 'Whooah!'
           }
         }
       },

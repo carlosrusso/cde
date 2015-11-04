@@ -66,6 +66,9 @@ define([
     if ('address' in map  && !map.addressType){
       map.addressType = 'address';
     }
+    if (!map.id){
+      map.id = 0; //TODO: reconsider this. We may need to want to use rowIdx instead
+    }
 
     return map;
   }
