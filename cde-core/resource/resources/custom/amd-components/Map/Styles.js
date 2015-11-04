@@ -81,7 +81,6 @@ define([
       pan: {
         unselected: {
           normal: {
-            label: 'yeah',
             fontColor: 'black',
             zIndex: 0,
             strokeWidth: 1

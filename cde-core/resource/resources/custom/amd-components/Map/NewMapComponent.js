@@ -77,27 +77,28 @@ define([
     'amd!cdf/lib/underscore',
     'cdf/components/UnmanagedComponent',
     'cdf/Logger',
-    './Map/engines/google/mapengine-google',
-    './Map/engines/openlayers2/mapengine-openlayers',
+    './Map/ISelector',
+    './Map/ColorMapMixin',
     './Map/model/MapSelectionTree',
     './Map/ControlPanel/ControlPanel',
+    './Map/getMapping',
+    './Map/FeatureStore/resolveShapes',
+    './Map/FeatureStore/resolveMarkers',
     './Map/Styles',
-    './Map/resolveShapes',
-    './Map/resolveMarkers',
     './Map/tileServices',
-    './Map/ColorMapMixin',
-    './Map/ISelector',
-    './Map/model/MapInputDataHandler',
+    './Map/engines/openlayers2/mapengine-openlayers',
+    './Map/engines/google/mapengine-google',
     './Map/addIns/mapAddIns',
-    'css!./NewMapComponent'],
+    'css!./NewMapComponent'
+  ],
   function ($, _, UnmanagedComponent, Logger,
-            GoogleMapEngine, OpenLayersEngine,
+            ISelector, ColorMapMixin,
             MapSelectionTree, ControlPanel,
-            Styles,
+            getMapping,
             resolveShapes, resolveMarkers,
-            _tileServices,
-            ColorMapMixin, ISelector,
-            MapInputDataHandler) {
+            Styles, _tileServices,
+            OpenLayersEngine, GoogleMapEngine
+  ) {
 
 
     var NewMapComponent = UnmanagedComponent.extend(ISelector).extend(ColorMapMixin).extend({
@@ -179,22 +180,19 @@ define([
       },
 
       onDataReady: function (json) {
-        var idx = {
-          id: 0,
-          value: 1
-        };
+
+        var mapping = getMapping(json);
+        this.mapping = $.extend(true, mapping, this.visualRoles);
 
         var me = this;
         if (this.mapMode === "shapes") {
-          var idList = _.pluck(json.resultset, idx.id);
-          this.resolveShapes(this.shapeResolver, this.shapeSource, idList, json)
+          this.resolveShapes(json, this.mapping, this.shapeResolver, this.shapeSource)
             .then(function (shapeDefinition) {
               me.shapeDefinition = shapeDefinition;
-              Logger.log('Loaded ' + _.size(me.shapeDefinition) + ' shapes', 'debug');
               me.render.call(me, json);
             });
         } else if (this.mapMode === "markers") {
-          this.resolveMarkers(this.locationResolver, json)
+          this.resolveMarkers(json, this.mapping, this.locationResolver)
             .then(function (markerDefinitions) {
               me.markerDefinitions = markerDefinitions;
               me.render.call(me, json);
@@ -238,9 +236,9 @@ define([
         this.controlPanel.render();
         var me = this;
         var eventMapping = {
-          'selection:complete': this.processChange,
-          'zoom:in': this.mapEngine.zoomIn,
-          'zoom:out': this.mapEngine.zoomOut
+          'selection:complete': _.bind(this.processChange, this),
+          'zoom:in': _.bind(this.mapEngine.zoomIn, this.mapEngine),
+          'zoom:out': _.bind(this.mapEngine.zoomOut, this.mapEngine)
         };
 
         _.each(eventMapping, function (callback, event) {
@@ -253,6 +251,8 @@ define([
       render: function (json) {
         this.initModel(json);
         this.updateSelection();
+
+        this._processMarkerImages();
 
         this.mapEngine.render(this.model);
         var centerLatitude = parseFloat(this.centerLatitude);
@@ -362,55 +362,12 @@ define([
         this.model = new MapSelectionTree({
           styleMap: this.getStyleMap('global')
         });
+
         this.model.root().set('mode', this.controlPanel.getMode());
         var me = this;
         this.listenTo(this.controlPanel, 'change:mode', function (model, value) {
           me.model.root().set('mode', value);
         });
-
-        // var series = _.map(json.resultset, function (row, rowIdx) {
-        //   return {
-        //     id: row[0],
-        //     label: row[0],
-        //     styleMap: {
-        //       unselected: {
-        //         'default': {
-        //         }
-        //       }
-        //     },
-        //     rowIdx: rowIdx,
-        //     rawData: row
-        //   };
-        // });
-
-        // var markers = {
-        //   id: 'markers',
-        //   label: 'Markers',
-        //   style: this.getStyleMap('markers'),
-        //   //nodes: this.mapMode === 'markers' ? series : undefined
-        // };
-
-        // var shapes = {
-        //   id: 'shapes',
-        //   label: 'Shapes',
-        //   style: this.getStyleMap('shapes'),
-        //   //nodes: this.mapMode === 'shapes' ? series : undefined
-        // };
-
-        // if (this.mapMode === 'markers') {
-        //   this.model.add(markers);
-        // }
-
-        // if (this.mapMode === 'shapes') {
-        //   this.model.add(shapes);
-        // }
-
-        //TODO: Discover automatically which columns correspond to the key and to the value
-        var idx = {
-          key: 0,
-          value: 1
-        };
-
 
         var colormap = this.getColorMap();
 
@@ -422,15 +379,13 @@ define([
           //nodes: this.initNodesModel(json)
         };
         this.model.add(modelTree);
-        if (json && json.metadata && json.resultset){
+        if (json && json.metadata && json.resultset) {
           this._addSeriesToModel(json);
         }
 
       },
 
       visualRoles: {
-        'label': 0,
-        'fill': 1
       },
 
       scales: {
@@ -457,25 +412,25 @@ define([
         label: function (context, seriesRoot, mapping, row, rowIdx) {
           return _.isEmpty(row) ? undefined : (row[mapping.label] + '');
         },
-        r: function(context, seriesRoot, mapping, row, rowIdx){
+        r: function (context, seriesRoot, mapping, row, rowIdx) {
           var value = row[mapping.r];
-          if (_.isNumber(value)){
+          if (_.isNumber(value)) {
             var rmin = this.scales.r[0];
             var rmax = this.scales.r[1];
             var v = seriesRoot.get('extremes').r;
             //var r = rmin + (value - v.min)/(v.max - v.min)*(rmax-rmin); //linear scaling
-            var r = Math.sqrt( rmin*rmin + (rmax*rmax - rmin*rmin)*(value - v.min)/ v.max - v.min); //sqrt scaling
-            if (_.isFinite(r)){
+            var r = Math.sqrt(rmin * rmin + (rmax * rmax - rmin * rmin) * (value - v.min) / v.max - v.min); //sqrt scaling
+            if (_.isFinite(r)) {
               return r;
             }
           }
         }
       },
 
-      _detectExtremes: function(json){
+      _detectExtremes: function (json) {
         var extremes = _.chain(this.visualRoles)
-          .map(function(colIndex, role){
-            if (json.metadata[colIndex].colType !== 'Numeric'){
+          .map(function (colIndex, role) {
+            if (json.metadata[colIndex].colType !== 'Numeric') {
               return [role, {}];
             }
             var qvalues = _.pluck(json.resultset, colIndex);
@@ -493,9 +448,7 @@ define([
       },
 
       _addSeriesToModel: function (json) {
-        var mapping = $.extend({
-          id: 0
-        }, this.visualRoles);
+        var mapping = $.extend({}, this.mapping);
 
         console.log(this.name, 'visualRoles', this.visualRoles);
 
@@ -517,7 +470,7 @@ define([
             _.each(states, function (state) {
               _.each(actions, function (action) {
                 _.each(me.attributeMapping, function (functionOrValue, attribute) {
-                  if (_.isUndefined(mapping[attribute]) || mapping[attribute] >= row.length ){
+                  if (_.isUndefined(mapping[attribute]) || mapping[attribute] >= row.length) {
                     return; //don't bother running the function when attribute is not mapped to the data
                   }
                   var context = {
@@ -541,7 +494,7 @@ define([
 
           var shapeDefinition = me.shapeDefinition ? me.shapeDefinition[id] : undefined;
           var markerDefinition = me.markerDefinitions ? me.markerDefinitions[id] : undefined;
-          var geoJSON = (me.mapMode === 'shapes') ? shapeDefinition : markerDefinition;
+          var geoJSON = (seriesRoot.get('id') === 'shapes') ? shapeDefinition : markerDefinition;
 
           return {
             id: id,
@@ -558,26 +511,25 @@ define([
         seriesRoot.add(series);
       },
 
-
-      getStyleMap0: function (styleName) {
-        return Styles.getStyleMap(styleName);
-      },
-
       getStyleMap: function (styleName) {
         var localStyleMap = this.styleMap || {};
         var styleMap = $.extend(true, {}, Styles.getStyleMap(styleName), localStyleMap.global, localStyleMap[styleName]);
         // TODO: should we just drop this?
-         switch (styleName){
-           case 'shape0s':
-             return $.extend(true, styleMap, {
-               pan: {
-                 unselected: {
-                   normal: this.shapeSettings
-                 }
-               }
-             });
-         }
+        switch (styleName) {
+          case 'shape0s':
+            return $.extend(true, styleMap, {
+              pan: {
+                unselected: {
+                  normal: this.shapeSettings
+                }
+              }
+            });
+        }
         return styleMap;
+      },
+
+      _processMarkerImages: function(){
+
       },
 
       _renderMarker: function (location, row, mapping, position) {

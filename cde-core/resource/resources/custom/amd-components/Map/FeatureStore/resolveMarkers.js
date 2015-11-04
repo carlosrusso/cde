@@ -1,12 +1,11 @@
 define([
   'cdf/lib/jquery',
-  'amd!cdf/lib/underscore',
-  './getMapping'
-], function ($, _, getMapping) {
+  'amd!cdf/lib/underscore'
+], function ($, _) {
 
   return resolveMarkers;
 
-  function resolveMarkers(locationResolver, json) {
+  function resolveMarkers(json, mapping, locationResolver) {
     var addIn = this.getAddIn('LocationResolver', locationResolver || 'openstreetmap');
 
     var deferred = $.Deferred();
@@ -15,17 +14,15 @@ define([
       return deferred.promise();
     }
 
-    var mapping = getMapping(json);
-
     var tgt = this;
     var opts = this.getAddInOptions('LocationResolver', addIn.getName());
     var markerDefinitions;
     if (mapping.addressType === 'coordinates') {
       markerDefinitions = _.chain(json.resultset)
         .map(function (row) {
-          var key = row[0]; //TODO: remove hardcoding of index
+          var id = row[mapping.id];
           var location = [row[mapping.longitude], row[mapping.latitude]];
-          return [key, createFeatureFromLocation(location)];
+          return [id, createFeatureFromLocation(location)];
         })
         .object()
         .value();
@@ -34,7 +31,7 @@ define([
       markerDefinitions = _.chain(json.resultset)
         .map(function (row, rowIdx) {
           var promisedLocation = $.Deferred();
-          var key = row[0];
+          var id = row[mapping.id];
           var address = mapping.address != undefined ? row[mapping.address] : undefined;
           var st = {
             data: row,
@@ -42,7 +39,8 @@ define([
             address: address,
             addressType: mapping.addressType,
 
-            key: key,
+            key: id, //TODO: deprecate 'key' in favour of 'id'
+            id: id,
             mapping: mapping,
             tableData: json,
             continuationFunction: function (location) {
@@ -60,7 +58,7 @@ define([
           } catch (e) {
             promisedLocation.resolve(null);
           }
-          return [key, promisedLocation.promise()];
+          return [id, promisedLocation.promise()];
         })
         .object()
         .value();

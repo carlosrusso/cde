@@ -6,7 +6,7 @@ define([
 
   return resolveShapes;
 
-  function resolveShapes (shapeResolver, url, idList, json) {
+  function resolveShapes (json, mapping, shapeResolver, url) {
     var addIn = this.getAddIn('ShapeResolver', shapeResolver);
     if (!addIn && url) {
       if (url.endsWith('json') || url.endsWith('js')) {
@@ -21,6 +21,7 @@ define([
       return deferred.promise();
     }
 
+    var idList = _.pluck(json.resultset, mapping.id);
     var tgt = this,
       st = {
         keys: idList, //TODO Consider keys -> ids

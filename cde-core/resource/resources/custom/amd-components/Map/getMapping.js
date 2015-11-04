@@ -22,6 +22,15 @@ define([
     // * popupHeight - Height of the popup window
 
     var colToPropertyMapping = { // colName -> property
+      'key': 'id',
+      'id': 'id',
+      'fill': 'fill',
+      'fillColor': 'fill',
+      'r': 'r',
+      // previously defined mappings
+      'latitude': 'latitude',
+      'longitude': 'longitude',
+      'address': 'address',
       'description': 'description',
       'marker': 'marker', //iconUrl
       'markerwidth': 'markerWidth',
@@ -30,35 +39,33 @@ define([
       'popupwidth': 'popupWidth',
       'popupheight': 'popupHeight'
     };
-    _.each(json.metadata, function (colMeta, idx) {
 
-      var colName = colMeta.colName.toLowerCase();
-      var property = colToPropertyMapping[colName];
-      if (property){
-        map[property] = idx;
-      }
+    var colNames = _.chain(json.metadata)
+      .pluck('colName')
+      .map( function(s){
+        return s.toLowerCase();
+      })
+      .value();
 
-      switch (colName) {
-        case 'latitude':
-          map.addressType = 'coordinates';
-          map.latitude = idx;
-          break;
-        case 'longitude':
-          map.addressType = 'coordinates';
-          map.longitude = idx;
-          break;
-        case 'address':
-          if (!map.addressType) {
-            map.address = idx;
-            map.addressType = 'address';
-          }
-          break;
-        default:
-          map[colMeta.colName.toLowerCase()] = idx;
-          break;
-      }
+    var map = _.chain(colNames)
+      .map(function(colName, idx){
+        var property = colToPropertyMapping[colName];
+        if (property) {
+          return [property, idx];
+        } else {
+          return [colName, idx]; //be permissive on the mapping
+        }
+      })
+      .compact()
+      .object()
+      .value();
 
-    });
+    if ('latitude' in map || 'longitude' in map){
+      map.addressType = 'coordinates';
+    }
+    if ('address' in map  && !map.addressType){
+      map.addressType = 'address';
+    }
 
     return map;
   }
