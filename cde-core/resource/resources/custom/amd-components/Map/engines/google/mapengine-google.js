@@ -43,6 +43,13 @@ define([
     overlays: [],
     API_KEY: false,
     selectedFeature: undefined,
+    
+    constructor: function(options) {
+      this.base();
+      //$.extend(this, options);
+      this.controls = {}; // map controls
+    },
+    
     init: function () {
       return $.when(MapComponentAsyncLoader('3', this.API_KEY)).then(
         function (status) {
@@ -123,39 +130,39 @@ define([
         });
     },
 
-    toNativeStyle: function (foreignStyle) {
-      var validStyle = {};
-      _.each(foreignStyle, function (value, key) {
-        switch (key) {
-          case 'strokeWidth':
-            validStyle['strokeWeight'] = value;
-            break;
-          case 'zIndex':
-          case 'visible':
-          case 'fillColor':
-          case 'fillOpacity':
-          case 'strokeColor':
-          case 'strokeOpacity':
-            validStyle[key] = value;
-        }
-      });
-      return validStyle;
-    },
+//    toNativeStyle: function (foreignStyle) {
+//      var validStyle = {};
+//      _.each(foreignStyle, function (value, key) {
+//        switch (key) {
+//          case 'strokeWidth':
+//            validStyle['strokeWeight'] = value;
+//            break;
+//          case 'zIndex':
+//          case 'visible':
+//          case 'fillColor':
+//          case 'fillOpacity':
+//          case 'strokeColor':
+//          case 'strokeOpacity':
+//            validStyle[key] = value;
+//        }
+//      });
+//      return validStyle;
+//    },
 
-    wrapEvent: function (event, feature, featureType, featureStyle, data) {
-      var myself = this;
+    wrapEvent: function (event, featureType) {
+      var me = this;
       return {
+        id: event.feature.getId(),
         latitude: event.latLng.lat(),
         longitude: event.latLng.lng(),
-        data: data,
-        feature: feature,
+        data: me.model.where({id: event.feature.getId()})[0].get('data'),
+        feature: event.feature,
         featureType: featureType,
-        style: _.clone(featureStyle),
-        marker: feature.marker,
+        style: me.model.where({id: event.feature.getId()})[0].getStyle(),
         mapEngineType: 'google3',
         draw: function (style) {
           // this function is currently called by the shape callbacks
-          var validStyle = myself.toNativeStyle(style);
+          var validStyle = me.toNativeStyle(style);
           feature.setOptions(validStyle);
           feature.setVisible(false);
           feature.setVisible(_.has(style, 'visible') ? !!style.visible : true);
@@ -167,11 +174,392 @@ define([
           return feature.selStyle;
         },
         isSelected: function () {
-          return myself.selectedFeature && myself.selectedFeature[0] === data.key;
+          return me.selectedFeature && me.selectedFeature[0] === data.key;
         },
         raw: event
       };
     },
+      
+    /*----------------------------*/
+    
+    renderMap: function (target, tilesets) {
+      
+      var me = this;
+      
+      this.tilesets = tilesets;
+
+      var mapOptions = {
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+      };
+
+      // Add base map
+      this.map = new google.maps.Map(target, mapOptions);
+      
+      // Set initial styleMap for the feature 
+      this.map.data.setStyle(function(feature) {
+        
+        return me.toNativeStyle( me.model.where({id: feature.getId()})[0].inferStyle('normal') );
+
+//        return {/** @type {google.maps.Data.StyleOptions} */
+//          fillColor: "blue"
+//        }
+        
+      });
+      
+      this.addControls();
+
+      registerViewportEvents.call(this);
+    },
+    
+    renderItem: function (modelItem) {
+      
+      var me = this;
+      
+      if (!modelItem) {
+        return;
+      }
+      var row = modelItem.get('rawData');
+      var data = {
+        rawData: row,
+        key: row && row[0]
+        //value: row[idx.value],
+      };
+//      var layer = this.layers[modelItem.getFeatureType()[1]];
+      var featureType = modelItem.getFeatureType()[1];
+      var geoJSON = modelItem.get('geoJSON');
+      var me = this;
+      $.when(geoJSON).then(function (feature) {
+        if (!feature) {
+          return;
+        }
+        
+        //set id for the feature
+        feature.properties.id = modelItem.get('id');
+        
+        var f = me.map.data.addGeoJson(feature, {idPropertyName: 'id'});
+        
+        var style = me.toNativeStyle( modelItem.inferStyle('normal') );
+        
+        //me.map.data.overrideStyle(feature, style);
+//        var style = modelItem.inferStyle('normal');
+//        $.extend(true, f, {
+//          attributes: {
+//            model: modelItem,
+//            data: data
+//          },
+//          style: me.toNativeStyle(style)
+//        });
+//        layer.addFeatures([f]);
+        console.log(1);
+      });
+
+    },
+    
+    toNativeStyle: function (foreignStyle) {
+      var conversionTable = {
+        // SVG standard attributes : OpenLayers2 attributes
+        'fill': 'fillColor',
+        'fill-opacity': 'fillOpacity',
+        'stroke': 'strokeColor',
+        'stroke-opacity': 'strokeOpacity',
+        'stroke-width': 'strokeWeight',
+        //Backwards compatibility
+        'fillColor': 'fillColor',
+        'fillOpacity': 'fillOpacity',
+        'strokeColor': 'strokeColor',
+        'strokeOpacity': 'strokeOpacity',
+        'strokeWeight': 'strokeWeight',
+        'zIndex': 'zIndex'
+      };
+      var validStyle = {};
+      _.each(foreignStyle, function (value, key) {
+        var nativeKey = conversionTable[key];
+        if (nativeKey) {
+          validStyle[nativeKey] = value;
+        } else {
+          switch (key) {
+            case 'visible':
+              validStyle['display'] = value ? true : 'none';
+              break;
+            default:
+              // be permissive about the validation
+              validStyle[key] = value;
+              break
+          }
+        }
+      });
+      //console.log('foreign vs valid:', foreignStyle, validStyle);
+      return validStyle;
+    },
+    
+    addControls: function () {
+      
+      this._addControlClick();
+      this._addControlZoomBox();
+      this._addControlBoxSelector();
+      
+    },
+    
+    _checkSelectionContainFeature: function(area, id) {
+
+      if (this.model.where({id:id})[0].attributes.geoJSON != undefined) {
+        
+        var geometry = this.model.where({id:id})[0].attributes.geoJSON.geometry;
+
+        if (geometry.type == 'MultiPolygon') {
+
+          var result = _.some(geometry.coordinates, function(value) {
+
+            return _.some(value, function(value) {
+
+              return _.some(value, function(value) {
+
+                var latLng = new google.maps.LatLng(value[1], value[0]);
+
+                return area.getBounds().contains(latLng);
+
+              });
+
+            });    
+
+          });
+
+          return result;
+
+        }      
+      }
+    },
+    
+    _removeControlZoomBox: function() {
+      
+      this.controls.zoomBox.listenersHandle.mousedown.remove();
+      this.controls.zoomBox.listenersHandle.mouseup.remove();
+      this.controls.zoomBox.listenersHandle.mousemove.remove();
+      
+//      this.map.setMap(null);
+      
+    },
+    
+    _addControlZoomBox: function() {
+      
+      var me = this;  
+      
+      me.controls.zoomBox = {};
+      me.controls.zoomBox.bounds = null;
+      me.controls.zoomBox.gribBoundingBox = null;
+      me.controls.zoomBox.mouseIsDown = false;
+      me.controls.zoomBox.listenersHandle = {};
+      
+    },
+
+    _addControlBoxSelector: function() {
+      
+      var me = this;  
+      
+      me.controls.boxSelector = {};
+      me.controls.boxSelector.bounds = null;
+      me.controls.boxSelector.gribBoundingBox = null;
+      me.controls.boxSelector.mouseIsDown = false;
+      me.controls.boxSelector.listenersHandle = {};
+      
+    },
+    
+    _addControlClick: function () {
+      
+      var me = this;
+      
+      this.map.data.addListener('click', function(e) {
+
+        var featureType = me.model.where({id: e.feature.getId()})[0].getFeatureType()[1];
+        
+//        me.trigger(featureType + ':click', me.wrapEvent(e));
+        me.trigger('shape' + ':click', me.wrapEvent(e));
+        
+      });
+      
+    },
+
+    zoomIn: function () {
+      console.log('zoomIn');
+      this.mapEngine.map.setZoom(this.mapEngine.map.getZoom() + 1);
+    },
+
+    zoomOut: function () {
+      console.log('zoomOut');
+      this.mapEngine.map.setZoom(this.mapEngine.map.getZoom() - 1);
+    },
+    
+    setSelectionMode: function () {
+
+      var me = this;
+      
+      me.controls.boxSelector.listenersHandle.mousedown = google.maps.event.addListener(this.map, 'mousedown', function (e) {
+        
+        var mode = me.model.root().get('mode');
+        
+        if (mode == 'selection') {
+          
+            me.controls.boxSelector.mouseIsDown = true;
+            me.controls.boxSelector.mouseDownPos = e.latLng;
+            me.map.setOptions({
+                draggable: false
+            });
+        }
+
+      });
+
+      me.controls.boxSelector.listenersHandle.mouseup = google.maps.event.addListener(this.map, 'mouseup', function (e) {
+        
+        var mode = me.model.root().get('mode');
+        
+        if (mode == 'selection' && me.controls.boxSelector.mouseIsDown) {
+          
+          me.controls.boxSelector.mouseIsDown = false;
+          me.controls.boxSelector.mouseUpPos = e.latLng;
+          
+          var boundsSelectionArea = new google.maps.LatLngBounds(
+              me.controls.boxSelector.gribBoundingBox.getBounds().getSouthWest(), 
+              me.controls.boxSelector.gribBoundingBox.getBounds().getNorthEast()
+          );
+          
+          console.log('a');
+          
+          me.model.flatten().filter(function (m) {
+            return m.children() == null;
+          }).each(function (m) {
+  
+            var id = m.get('id');
+
+            var result = me._checkSelectionContainFeature(me.controls.boxSelector.gribBoundingBox, id);
+            
+            if (result)
+              console.log(id);
+            
+          });
+          
+          //me.map.fitBounds( boundsSelectionArea );
+          
+          me.controls.boxSelector.gribBoundingBox.setMap(null);
+          me.controls.boxSelector.gribBoundingBox = null;
+
+          me.map.setOptions({
+            draggable: true
+          });
+          
+        }
+      });
+      
+      me.controls.boxSelector.listenersHandle.mousemove = google.maps.event.addListener(this.map, 'mousemove', function (e) {
+
+        var mode = me.model.root().get('mode');
+        
+        if (mode == 'selection' && me.controls.boxSelector.mouseIsDown) {
+          
+          if (me.controls.boxSelector.gribBoundingBox !== null) // box exists
+          {
+            me.controls.boxSelector.bounds.extend(e.latLng);                
+            me.controls.boxSelector.gribBoundingBox.setBounds(me.controls.boxSelector.bounds); // If this statement is enabled, I lose mouseUp events
+
+          } else // create bounding box
+          {
+            me.controls.boxSelector.bounds = new google.maps.LatLngBounds();
+            me.controls.boxSelector.bounds.extend(e.latLng);
+            me.controls.boxSelector.gribBoundingBox = new google.maps.Rectangle({
+              map: me.map,
+              bounds: me.controls.boxSelector.bounds,
+              fillOpacity: 0.15,
+              strokeWeight: 0.9,
+              clickable: false
+            });
+          }
+        }
+      });
+      
+      
+      console.log('Zoom mode enable');
+    },
+
+    setZoomBoxMode: function () {
+
+      var me = this;
+      
+      me.controls.zoomBox.listenersHandle.mousedown = google.maps.event.addListener(this.map, 'mousedown', function (e) {
+        
+        var mode = me.model.root().get('mode');
+        
+        if (mode == 'zoombox') {
+          
+            me.controls.zoomBox.mouseIsDown = true;
+            me.controls.zoomBox.mouseDownPos = e.latLng;
+            me.map.setOptions({
+                draggable: false
+            });
+        }
+
+      });
+
+      me.controls.zoomBox.listenersHandle.mouseup = google.maps.event.addListener(this.map, 'mouseup', function (e) {
+        
+        var mode = me.model.root().get('mode');
+        
+        if (mode == 'zoombox' && me.controls.zoomBox.mouseIsDown) {
+          
+          me.controls.zoomBox.mouseIsDown = false;
+          me.controls.zoomBox.mouseUpPos = e.latLng;
+          
+          var boundsSelectionArea = new google.maps.LatLngBounds(
+              me.controls.zoomBox.gribBoundingBox.getBounds().getSouthWest(), 
+              me.controls.zoomBox.gribBoundingBox.getBounds().getNorthEast()
+          );
+          
+          me.map.fitBounds( boundsSelectionArea );
+          
+          me.controls.zoomBox.gribBoundingBox.setMap(null);
+          me.controls.zoomBox.gribBoundingBox = null;
+
+          me.map.setOptions({
+            draggable: true
+          });
+          
+        }
+      });
+      
+      me.controls.zoomBox.listenersHandle.mousemove = google.maps.event.addListener(this.map, 'mousemove', function (e) {
+
+        var mode = me.model.root().get('mode');
+        
+        if (mode == 'zoombox' && me.controls.zoomBox.mouseIsDown) {
+          
+          if (me.controls.zoomBox.gribBoundingBox !== null) // box exists
+          {
+            me.controls.zoomBox.bounds.extend(e.latLng);                
+            me.controls.zoomBox.gribBoundingBox.setBounds(me.controls.zoomBox.bounds); // If this statement is enabled, I lose mouseUp events
+
+          } else // create bounding box
+          {
+            me.controls.zoomBox.bounds = new google.maps.LatLngBounds();
+            me.controls.zoomBox.bounds.extend(e.latLng);
+            me.controls.zoomBox.gribBoundingBox = new google.maps.Rectangle({
+              map: me.map,
+              bounds: me.controls.zoomBox.bounds,
+              fillOpacity: 0.15,
+              strokeWeight: 0.9,
+              clickable: false
+            });
+          }
+        }
+      });
+      
+      
+      console.log('Zoom mode enable');
+    },
+    
+    setPanningMode: function() {
+      this._removeControlZoomBox();
+      console.log('Selection mode enable');
+    },
+  
+    /*-----------------------------*/
 
 
     setShape1: function (multiPolygon, shapeStyle, data) {
@@ -284,9 +672,42 @@ define([
 
     },
 
+    addLayers: function () {
 
-    renderMap: function (target, tilesets) {
+      //Prepare tilesets as overlays
+      var layers = [],
+        layerIds = [],
+        layerOptions = [];
+      for (var k = 0; k < this.tilesets.length; k++) {
+        var thisTileset = this.tilesets[k].slice(0);
+
+        layerIds.push(thisTileset);
+        layerOptions.push({
+          mapTypeId: thisTileset
+        });
+
+        if (this.tileServices[thisTileset]) {
+          layers.push(this.tileLayer(thisTileset));
+        } else {
+          layers.push('');
+        }
+
+      } //for tilesets
+
+      for (k = 0; k < layers.length; k++) {
+        if (!_.isEmpty(layers[k])) {
+          this.map.mapTypes.set(layerIds[k], layers[k]);
+          //this.map.overlayMapTypes.push(layers[k]);
+          this.map.setMapTypeId(layerIds[k]);
+          this.map.setOptions(layerOptions[k]);
+        }
+      }
+       
+    },      
+
+    __renderMap: function (target, tilesets) {
       this.tilesets = tilesets;
+      Logger.log('Requested tilesets:' + JSON.stringify(tilesets), 'debug');
 
       var myOptions = {
         mapTypeId: google.maps.MapTypeId.ROADMAP
@@ -318,6 +739,7 @@ define([
           mapTypeIds: layerIds.concat(_.values(google.maps.MapTypeId))
         }
       });
+        
       for (k = 0; k < layers.length; k++) {
         if (!_.isEmpty(layers[k])) {
           this.map.mapTypes.set(layerIds[k], layers[k]);
