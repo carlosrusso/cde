@@ -189,14 +189,14 @@ define([
         var ph = this.placeholder().empty();
         this._relayMapEngineEvents();
         this._registerEvents();
-        this._initControlPanel();
 
         this.mapEngine.renderMap(ph[0]);
+        this._initControlPanel();
         this._initPopup();
       },
 
       _initControlPanel: function () {
-        var $controlPanel = $('<div class="map-controls" />').prependTo(this.placeholder());
+        var $controlPanel = $('<div class="map-controls" />').appendTo(this.placeholder());
         this.controlPanel = new ControlPanel($controlPanel);
         this.controlPanel.render();
         var me = this;
