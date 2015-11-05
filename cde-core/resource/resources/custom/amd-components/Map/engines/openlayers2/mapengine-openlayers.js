@@ -222,10 +222,7 @@ define([
       this.map.addPopup(popup, true);
     },
 
-    renderMap: function (target, tilesets) {
-      this.tilesets = tilesets;
-      Logger.log('Requested tilesets:' + JSON.stringify(tilesets), 'debug');
-
+    renderMap: function (target) {
       var projectionMap = new OpenLayers.Projection('EPSG:900913');
       var projectionWGS84 = new OpenLayers.Projection('EPSG:4326');
 

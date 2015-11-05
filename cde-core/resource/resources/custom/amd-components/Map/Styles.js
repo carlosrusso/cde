@@ -40,14 +40,11 @@ define([
             strokeWidth: 2,
             fillOpacity: 0.4
           },
-          hover: {
-          }
+          hover: {}
         },
         selected: {
-          normal: {
-          },
-          hover: {
-          }
+          normal: {},
+          hover: {}
         }
       },
       selection: {
@@ -55,16 +52,13 @@ define([
           normal: {
             fill: 'gray'
           },
-          hover: {
-          }
+          hover: {}
         },
         selected: {
           normal: {
             fill: 'red'
           },
-          hover: {
-
-          }
+          hover: {}
         }
       }
     },

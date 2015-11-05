@@ -5,8 +5,8 @@ define([
 
   return resolveMarkers;
 
-  function resolveMarkers(json, mapping, locationResolver) {
-    var addIn = this.getAddIn('LocationResolver', locationResolver || 'openstreetmap');
+  function resolveMarkers(json, mapping, configuration) {
+    var addIn = this.getAddIn('LocationResolver', configuration.addIns.LocationResolver.name);
 
     var deferred = $.Deferred();
     if (!addIn) {

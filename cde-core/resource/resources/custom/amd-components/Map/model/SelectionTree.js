@@ -337,6 +337,8 @@ define([
       }
       return hasChanged;
     }
+  },{
+    states: SelectionStates
   });
 
   return SelectionTree;
