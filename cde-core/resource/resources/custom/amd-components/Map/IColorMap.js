@@ -1,8 +1,24 @@
-define([
-  'amd!cdf/lib/underscore'
-], function (_) {
+(function (root, factory) {
+  if (typeof Dashboards === 'undefined') {
+    define([
+      'amd!cdf/lib/underscore'
+    ], factory);
+  } else {
+    namespace(root, 'CDFComponents.NewMap.IColorMap', factory(
+      root._
+    ));
+  }
+  function namespace(root, path, f) {
+    var levels = path.split('.');
+    var location = levels.slice(0, levels.length - 1).reduce(function (base, level) {
+      base[level] = base[level] || {};
+      return base[level];
+    }, root);
+    location[levels[levels.length - 1]] = f;
+  }
+})(this, function (_) {
 
-  var ColorMapMixin = {
+  var IColorMap = {
     /** Mixin for handling color maps
      This should probably be elevated to a proper class with a nice database of colormaps
      */
@@ -54,7 +70,7 @@ define([
     }
   };
 
-  return ColorMapMixin;
+  return IColorMap;
 
 
 });

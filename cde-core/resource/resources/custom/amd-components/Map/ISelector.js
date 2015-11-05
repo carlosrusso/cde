@@ -1,4 +1,19 @@
-define([], function () {
+(function (root, factory) {
+  if (typeof Dashboards === 'undefined') {
+    define([], factory);
+  } else {
+    namespace(root, 'CDFComponents.NewMap.ISelector', factory(
+    ));
+  }
+  function namespace(root, path, f) {
+    var levels = path.split('.');
+    var location = levels.slice(0, levels.length - 1).reduce(function (base, level) {
+      base[level] = base[level] || {};
+      return base[level];
+    }, root);
+    location[levels[levels.length - 1]] = f;
+  }
+})(this, function () {
 
   return {
 
@@ -9,7 +24,7 @@ define([], function () {
      * @return {Array} List of strings containing the IDs of the selected items,
      * in the same format as they would be written to the parameter
      */
-    getValue: function() {
+    getValue: function () {
 
       return this.model.getSelectedItems();
     },
@@ -22,8 +37,8 @@ define([], function () {
      * which will be written to the parameter
      * @chainable
      */
-    setValue: function(idList) {
-      if (this.model){
+    setValue: function (idList) {
+      if (this.model) {
         this.model.setSelectedItems(idList);
       } else {
         throw 'Model is not initialized';
@@ -31,7 +46,7 @@ define([], function () {
       return this;
     },
 
-    updateSelection: function(){
+    updateSelection: function () {
       // Mark selected model items
       var idList = this.dashboard.getParameterValue(this.parameter);
       this.setValue(idList);
@@ -45,7 +60,7 @@ define([], function () {
      * @param {Array} value List of strings containing the IDs of the selected items,
      * in the same format as they would be written to the parameter
      */
-    processChange: function() {
+    processChange: function () {
       this.dashboard.processChange(this.name);
       return this;
     }
