@@ -225,9 +225,9 @@ define([
 
         return this.mapEngine.init().then(_.bind(function () {
           var ph = this.placeholder().empty();
+          this.mapEngine.renderMap(ph[0], this.tilesets);
           this._initControlPanel();
           this._relayMapEngineEvents();
-          this.mapEngine.renderMap(ph[0], this.tilesets);
           this._initPopup();
         }, this));
       },
