@@ -432,9 +432,12 @@ define([
 
             var result = me._checkSelectionContainFeature(me.controls.boxSelector.gribBoundingBox, id);
             
-            if (result)
+            if (result) {
+              
+              var style = me.toNativeStyle( m.inferStyle('normal') );
               console.log(id);
-            
+            }
+              
           });
           
           //me.map.fitBounds( boundsSelectionArea );
@@ -557,6 +560,24 @@ define([
     setPanningMode: function() {
       this._removeControlZoomBox();
       console.log('Selection mode enable');
+    },
+    
+    updateFeatures: function() {
+      
+//      var me = this;
+//      
+//      me.model.flatten().filter(function (m) {
+//        return m.children() == null;
+//      }).each(function (m) {
+//
+//        var id = m.get('id');
+//
+//        var result = me._checkSelectionContainFeature(me.controls.boxSelector.gribBoundingBox, id);
+//
+//        if (result)
+//          console.log(id);
+//      });
+      
     },
   
     /*-----------------------------*/
