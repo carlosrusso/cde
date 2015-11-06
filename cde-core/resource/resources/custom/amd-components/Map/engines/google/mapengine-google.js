@@ -16,8 +16,9 @@ define([
   'amd!cdf/lib/underscore',
   '../mapengine',
   './MapComponentAsyncLoader',
+  '../../model/SelectionStates',
   'css!./style-google'
-], function ($, _, MapEngine, MapComponentAsyncLoader) {
+], function ($, _, MapEngine, MapComponentAsyncLoader, SelectionStates) {
 
   function OurMapOverlay(startPoint, width, height, htmlContent, popupContentDiv, map, borderColor) {
 
@@ -296,7 +297,7 @@ define([
     
     addControls: function () {
       
-      this._addControlClick();
+      //this._addControlClick();
       this._addControlZoomBox();
       this._addControlBoxSelector();
       
@@ -339,10 +340,17 @@ define([
       this.controls.zoomBox.listenersHandle.mouseup.remove();
       this.controls.zoomBox.listenersHandle.mousemove.remove();
       
-//      this.map.setMap(null);
-      
     },
     
+    _removeControlBoxSelector: function() {
+      
+      this.controls.boxSelector.listenersHandle.mousedown.remove();
+      this.controls.boxSelector.listenersHandle.mouseup.remove();
+      this.controls.boxSelector.listenersHandle.mousemove.remove();
+      this.controls.boxSelector.listenersHandle.click.remove();
+      
+    },
+
     _addControlZoomBox: function() {
       
       var me = this;  
@@ -396,6 +404,19 @@ define([
 
       var me = this;
       
+      me.controls.boxSelector.listenersHandle.click = me.map.data.addListener('click', function(event) {
+        
+        var id = event.feature.getId();
+        var modelItem = me.model.findWhere({id:id});
+        
+        modelItem.setSelection( (modelItem.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
+              
+        var style = me.toNativeStyle( modelItem.inferStyle('normal') );
+              
+        me.map.data.overrideStyle(event.feature, style);
+
+      });
+      
       me.controls.boxSelector.listenersHandle.mousedown = google.maps.event.addListener(this.map, 'mousedown', function (e) {
         
         var mode = me.model.root().get('mode');
@@ -435,10 +456,19 @@ define([
 
             var result = me._checkSelectionContainFeature(me.controls.boxSelector.gribBoundingBox, id);
             
+            // Area contains shape
             if (result) {
               
+              m.setSelection( (m.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
+              
               var style = me.toNativeStyle( m.inferStyle('normal') );
-              console.log(id);
+              var feature = me.map.data.getFeatureById(id);
+              
+              me.map.data.overrideStyle(feature, style);
+            }
+            
+            else {
+              m.setSelection(SelectionStates.NONE);
             }
               
           });
@@ -481,8 +511,8 @@ define([
         }
       });
       
-      
-      console.log('Zoom mode enable');
+      console.log('Box mode enable');
+      this.updateFeatures();
     },
 
     setZoomBoxMode: function () {
@@ -558,42 +588,53 @@ define([
       
       
       console.log('Zoom mode enable');
+      this.updateFeatures();
     },
     
     setPanningMode: function() {
       this._removeControlZoomBox();
+      this._removeControlBoxSelector();
       console.log('Selection mode enable');
+
+      this.updateFeatures();
     },
     
     updateFeatures: function() {
       
-//      var me = this;
-//      
-//      me.model.flatten().filter(function (m) {
-//        return m.children() == null;
-//      }).each(function (m) {
-//
-//        var id = m.get('id');
-//
-//        var result = me._checkSelectionContainFeature(me.controls.boxSelector.gribBoundingBox, id);
-//
-//        if (result)
-//          console.log(id);
-//      });
+      // revertStyle deveria disparar setStyle para todas as features. mas nao esta
+      this.map.data.revertStyle();
+      
+      // Codigo temporario
+      
+      var me = this;
+      
+      me.model.flatten().filter(function (m) {
+        return m.children() == null;
+      }).each(function (m) {
+
+        var id = m.get('id');
+
+        var style = me.toNativeStyle( m.inferStyle('normal') );
+        var feature = me.map.data.getFeatureById(id);
+
+        me.map.data.overrideStyle(feature, style);
+
+      });
+      
       
     },
   
     /*-----------------------------*/
 
 
-    setShape1: function (multiPolygon, shapeStyle, data) {
+    __setShape1: function (multiPolygon, shapeStyle, data) {
       // Attempt at using GeoJSON as a viewModel
       var shapes = this.map.data.addGeoJson(multiPolygon);
       return;
     },
 
 
-    setShape: function (feature, shapeStyle, data) {
+    __setShape: function (feature, shapeStyle, data) {
       if (!feature) {
         return;
       }
@@ -652,7 +693,6 @@ define([
       }
 
     },
-
 
     unselectPrevShape: function (key, shapes, shapeStyle) {
       var myself = this;
