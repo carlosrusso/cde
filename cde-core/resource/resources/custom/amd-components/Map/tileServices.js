@@ -1,4 +1,19 @@
-define([], function () {
+(function (root, factory) {
+  if (typeof Dashboards === 'undefined') {
+    define([], factory);
+  } else {
+    namespace(root, 'CDFComponents.NewMap.tileServices', factory(
+    ));
+  }
+  function namespace(root, path, f) {
+    var levels = path.split('.');
+    var location = levels.slice(0, levels.length - 1).reduce(function (base, level) {
+      base[level] = base[level] || {};
+      return base[level];
+    }, root);
+    location[levels[levels.length - 1]] = f;
+  }
+})(this, function () {
 
   /**
    * TileServices (servers providing png images representing the map)

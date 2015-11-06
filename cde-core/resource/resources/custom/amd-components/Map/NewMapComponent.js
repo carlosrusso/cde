@@ -73,35 +73,36 @@
  */
 
 define([
-    'cdf/lib/jquery',
-    'amd!cdf/lib/underscore',
-    'cdf/components/UnmanagedComponent',
-    'cdf/Logger',
-    './Map/engines/google/mapengine-google',
-    './Map/engines/openlayers2/mapengine-openlayers',
-    './Map/model/MapSelectionTree',
-    './Map/ControlPanel/ControlPanel',
-    './Map/Styles',
-    './Map/resolveShapes',
-    './Map/resolveMarkers',
-    './Map/tileServices',
-    './Map/ColorMapMixin',
-    './Map/ISelector',
-    './Map/model/MapInputDataHandler',
-    './Map/addIns/mapAddIns',
-    'css!./NewMapComponent'],
-  function ($, _, UnmanagedComponent, Logger,
-            GoogleMapEngine, OpenLayersEngine,
-            MapSelectionTree, ControlPanel,
-            Styles,
-            resolveShapes, resolveMarkers,
-            _tileServices,
-            ColorMapMixin, ISelector,
-            MapInputDataHandler) {
+  'cdf/lib/jquery',
+  'amd!cdf/lib/underscore',
+  'cdf/components/UnmanagedComponent',
+  './Map/ILifecycle',
+  './Map/ISelector',
+  './Map/IMapModel',
+  './Map/IConfiguration',
+
+  './Map/IColorMap',
+  './Map/ControlPanel/ControlPanel',
+  './Map/tileServices',
+  './Map/engines/openlayers2/mapengine-openlayers',
+  './Map/engines/google/mapengine-google',
+  './Map/addIns/mapAddIns',
+  'css!./NewMapComponent'
+], function ($, _, UnmanagedComponent,
+             ILifecycle,
+             ISelector, IMapModel, IConfiguration, IColorMap,
+              ControlPanel,
+             _tileServices,
+             OpenLayersEngine, GoogleMapEngine) {
 
 
-    var NewMapComponent = UnmanagedComponent.extend(ISelector).extend(ColorMapMixin).extend({
-      ph: undefined, //perhaps this is not needed
+  var NewMapComponent = UnmanagedComponent
+    .extend(ILifecycle)
+    .extend(ISelector)
+    .extend(IMapModel)
+    .extend(IConfiguration)
+    .extend(IColorMap)
+    .extend({
       mapEngine: undefined, // points to one instance of a MapEngine object
       locationResolver: undefined, // addIn used to process location
       //shapeResolver: undefined, // addIn used to process location
@@ -148,88 +149,50 @@ define([
         }
         this.maybeToggleBlock(true);
 
-        this._registerEvents();
-        if (_.isString(this.tilesets)) {
-          this.tilesets = [this.tilesets];
-        }
-
-        this.init().then(_.bind(function () {
-          if (this.queryDefinition && !_.isEmpty(this.queryDefinition)) {
-            this.getQueryData();
-          } else {
-            // No datasource, we'll just display the map
-            this.onDataReady(this.testData || {});
-          }
-        }, this));
+        this.configuration = this.getConfiguration();
+        this._initMapEngine()
+          .then(_.bind(this.init, this))
+          .then(_.bind(function () {
+            if (this.queryDefinition && !_.isEmpty(this.queryDefinition)) {
+              this.getQueryData();
+            } else {
+              // No datasource, we'll just display the map
+              this.onDataReady(this.testData || {});
+            }
+          }, this));
       },
 
-      maybeToggleBlock: function (block) {
-        if (!this.isSilent()) {
-          block ? this.block() : this.unblock();
-        }
-      },
-
-      getQueryData: function () {
-        var query = this.queryState = this.query = this.dashboard.getQuery(this.queryDefinition);
-        query.setAjaxOptions({async: true});
-        query.fetchData(
-          this.parameters,
-          this.getSuccessHandler(this.onDataReady),
-          this.getErrorHandler());
-      },
 
       onDataReady: function (json) {
-        var idx = {
-          id: 0,
-          value: 1
-        };
-
-        var me = this;
-        if (this.mapMode === "shapes") {
-          var idList = _.pluck(json.resultset, idx.id);
-          this.resolveShapes(this.shapeResolver, this.shapeSource, idList, json)
-            .then(function (shapeDefinition) {
-              me.shapeDefinition = shapeDefinition;
-              Logger.log('Loaded ' + _.size(me.shapeDefinition) + ' shapes', 'debug');
-              me.render.call(me, json);
-            });
-        } else if (this.mapMode === "markers") {
-          this.resolveMarkers(this.locationResolver, json)
-            .then(function (markerDefinitions) {
-              me.markerDefinitions = markerDefinitions;
-              me.render.call(me, json);
-            });
-        } else {
-          this.render(json);
-        }
-
+        return $.when(this.resolveFeatures(json))
+          .then(_.bind(function (json) {
+            this.initModel(json);
+            this.updateSelection();
+            this._processMarkerImages();
+          }, this))
+          .then(_.bind(this.render, this))
+          .then(_.bind(this._concludeUpdate, this));
       },
 
+      _initMapEngine: function () {
+        var options = this.configuration.addIns.MapEngine.options;
 
-      init: function () {
-        //var inputOptions = {};
-        //this.inputDataHandler = new MapInputDataHandler(inputOptions);
-
-        var options = {
-          API_KEY: this.API_KEY || window.API_KEY, //either local or global API_KEY
-          tileServices: this.tileServices,
-          tileServicesOptions: this.tileServicesOptions
-        };
-
-
-        if (this.mapEngineType == 'google') {
+        if (this.configuration.addIns.MapEngine.name == 'google') {
           this.mapEngine = new GoogleMapEngine(options);
         } else {
           this.mapEngine = new OpenLayersEngine(options);
         }
+        return this.mapEngine.init()
+      },
 
-        return this.mapEngine.init().then(_.bind(function () {
-          var ph = this.placeholder().empty();
-          this.mapEngine.renderMap(ph[0], this.tilesets);
-          this._initControlPanel();
-          this._relayMapEngineEvents();
-          this._initPopup();
-        }, this));
+      init: function () {
+        var ph = this.placeholder().empty();
+        this._relayMapEngineEvents();
+        this._registerEvents();
+
+        this.mapEngine.renderMap(ph[0]);
+        this._initControlPanel();
+        this._initPopup();
       },
 
       _initControlPanel: function () {
@@ -238,9 +201,9 @@ define([
         this.controlPanel.render();
         var me = this;
         var eventMapping = {
-          'selection:complete': this.processChange,
-          'zoom:in': this.mapEngine.zoomIn,
-          'zoom:out': this.mapEngine.zoomOut
+          'selection:complete': _.bind(this.processChange, this),
+          'zoom:in': _.bind(this.mapEngine.zoomIn, this.mapEngine),
+          'zoom:out': _.bind(this.mapEngine.zoomOut, this.mapEngine)
         };
 
         _.each(eventMapping, function (callback, event) {
@@ -250,21 +213,13 @@ define([
         });
       },
 
-      render: function (json) {
-        this.initModel(json);
-        this.updateSelection();
-
+      render: function () {
         this.mapEngine.render(this.model);
-        var centerLatitude = parseFloat(this.centerLatitude);
-        var centerLongitude = parseFloat(this.centerLongitude);
-        this.mapEngine.updateViewport(centerLongitude, centerLatitude, this.defaultZoomLevel);
-
-        // google mapEngine implementation will still fetch data asynchronously before ca
-        // so only here can we finish the lifecycle.
-        this.postExec();
-        this.maybeToggleBlock(false);
+        var centerLatitude = this.configuration.viewport.center.latitude;
+        var centerLongitude = this.configuration.viewport.center.longitude;
+        var defaultZoomLevel = this.configuration.viewport.zoomLevel;
+        this.mapEngine.updateViewport(centerLongitude, centerLatitude, defaultZoomLevel);
       },
-
 
       _relayMapEngineEvents: function () {
         var engine = this.mapEngine;
@@ -277,7 +232,6 @@ define([
           component.listenTo(engine, event, function () {
             var args = _.union([event], arguments);
             component.trigger.apply(component, args);
-            //console.log('Relayed event: ', event);
           });
         });
 
@@ -301,18 +255,14 @@ define([
 
         // Marker mouseover/mouseout events are not yet completely supported
         // this.on('marker:mouseover', function(event){
-        //   // Logger.log('Marker mouseover');
         // });
         // this.on('marker:mouseout', function(event){
-        //   Logger.log('Marker mouseout');
         // });
 
         this.on('shape:mouseover', function (event) {
-          // Logger.log('Shape mouseover');
           //this.mapEngine.showPopup(event.data,  event.feature, 50, 20, "Hello", undefined, 'red'); //Poor man's popup, only seems to work with OpenLayers
           if (_.isFunction(me.shapeMouseOver)) {
             var result = me.shapeMouseOver(event);
-            return;
             if (result) {
               result = _.isObject(result) ? result : {};
               event.draw(_.defaults(result, {'zIndex': 1}, event.style));
@@ -321,7 +271,6 @@ define([
         });
 
         this.on('shape:mouseout', function (event) {
-          //Logger.log('Shape mouseout');
           var result = {};
           if (_.isFunction(me.shapeMouseOut)) {
             result = me.shapeMouseOut(event);
@@ -354,304 +303,73 @@ define([
       },
 
 
-      resolveShapes: resolveShapes,
-      resolveMarkers: resolveMarkers,
-
-      initModel: function (json) {
-
-        this.model = new MapSelectionTree({
-          styleMap: this.getStyleMap('global')
-        });
-        this.model.root().set('mode', this.controlPanel.getMode());
-        var me = this;
-        this.listenTo(this.controlPanel, 'change:mode', function (model, value) {
-          me.model.root().set('mode', value);
-        });
-
-        // var series = _.map(json.resultset, function (row, rowIdx) {
-        //   return {
-        //     id: row[0],
-        //     label: row[0],
-        //     styleMap: {
-        //       unselected: {
-        //         'default': {
-        //         }
-        //       }
-        //     },
-        //     rowIdx: rowIdx,
-        //     rawData: row
-        //   };
-        // });
-
-        // var markers = {
-        //   id: 'markers',
-        //   label: 'Markers',
-        //   style: this.getStyleMap('markers'),
-        //   //nodes: this.mapMode === 'markers' ? series : undefined
-        // };
-
-        // var shapes = {
-        //   id: 'shapes',
-        //   label: 'Shapes',
-        //   style: this.getStyleMap('shapes'),
-        //   //nodes: this.mapMode === 'shapes' ? series : undefined
-        // };
-
-        // if (this.mapMode === 'markers') {
-        //   this.model.add(markers);
-        // }
-
-        // if (this.mapMode === 'shapes') {
-        //   this.model.add(shapes);
-        // }
-
-        //TODO: Discover automatically which columns correspond to the key and to the value
-        var idx = {
-          key: 0,
-          value: 1
-        };
-
-
-        var colormap = this.getColorMap();
-
-        var modelTree = {
-          id: this.mapMode,
-          label: this.mapMode,
-          styleMap: this.getStyleMap(this.mapMode),
-          colormap: colormap//,
-          //nodes: this.initNodesModel(json)
-        };
-        this.model.add(modelTree);
-        if (json && json.metadata && json.resultset){
-          this._addSeriesToModel(json);
+      _processMarkerImages: function () {
+        var markersRoot = this.model.findWhere({id: 'markers'});
+        if (!markersRoot) {
+          return;
         }
 
-      },
+        var state = {
+          height: this.configuration.addIns.MarkerImage.options.height,
+          width: this.configuration.addIns.MarkerImage.options.width,
+          url: this.configuration.addIns.MarkerImage.options.iconUrl
+        };
 
-      visualRoles: {
-        'label': 0,
-        'fill': 1
-      },
-
-      scales: {
-        fill: 'default', //named colormap, or a colormap definition
-        r: [10, 20]
-      },
-
-      attributeMapping: {
-        fill: function (context, seriesRoot, mapping, row, rowIdx) {
-          // TODO: Discover automatically which columns correspond to the key and to the value
-          var value = row[mapping.fill];
-          var useGradient = (context.mode === 'pan' && context.state === 'unselected' && context.action === 'normal');
-          useGradient = useGradient || (context.mode === 'selection' && context.state === 'selected' && context.action === 'normal');
-
-          if (_.isNumber(value) && useGradient) {
-            var colormap = seriesRoot.get('colormap') || this.getColorMap();
-            return this.mapColor(value,
-              seriesRoot.get('extremes').fill.min,
-              seriesRoot.get('extremes').fill.max,
-              colormap
-            );
-          }
-        },
-        label: function (context, seriesRoot, mapping, row, rowIdx) {
-          return _.isEmpty(row) ? undefined : (row[mapping.label] + '');
-        },
-        r: function(context, seriesRoot, mapping, row, rowIdx){
-          var value = row[mapping.r];
-          if (_.isNumber(value)){
-            var rmin = this.scales.r[0];
-            var rmax = this.scales.r[1];
-            var v = seriesRoot.get('extremes').r;
-            //var r = rmin + (value - v.min)/(v.max - v.min)*(rmax-rmin); //linear scaling
-            var r = Math.sqrt( rmin*rmin + (rmax*rmax - rmin*rmin)*(value - v.min)/ v.max - v.min); //sqrt scaling
-            if (_.isFinite(r)){
-              return r;
-            }
-          }
-        }
-      },
-
-      _detectExtremes: function(json){
-        var extremes = _.chain(this.visualRoles)
-          .map(function(colIndex, role){
-            if (json.metadata[colIndex].colType !== 'Numeric'){
-              return [role, {}];
-            }
-            var qvalues = _.pluck(json.resultset, colIndex);
-            var minValue = _.min(qvalues),
-              maxValue = _.max(qvalues);
-            return [role, {
-              min: minValue,
-              max: maxValue
-            }]
+        markersRoot.flatten()
+          .filter(function (m) {
+            // just the leafs
+            return m.children() == null;
           })
-          .object()
+          .each(_.bind(processRow, this))
           .value();
 
-        return extremes;
-      },
+        function processRow(m) {
+          var mapping = this.mapping;
+          var row = m.get('rawData');
 
-      _addSeriesToModel: function (json) {
-        var mapping = $.extend({
-          id: 0
-        }, this.visualRoles);
-
-        console.log(this.name, 'visualRoles', this.visualRoles);
-
-        var seriesRoot = this.model.findWhere({'id': this.mapMode});
-        seriesRoot.set('extremes', this._detectExtremes(json));
-
-        var colNames = _.pluck(json.metadata, 'colName');
-
-        var me = this;
-        var series = _.map(json.resultset, function (row, rowIdx) {
-
-          var id = row[mapping.id];
-          var styleMap = {};
-          var modes = ['pan', 'zoombox', 'selection'],
-            states = ['unselected', 'selected'],
-            actions = ['normal', 'hover'];
-
-          _.each(modes, function (mode) {
-            _.each(states, function (state) {
-              _.each(actions, function (action) {
-                _.each(me.attributeMapping, function (functionOrValue, attribute) {
-                  if (_.isUndefined(mapping[attribute]) || mapping[attribute] >= row.length ){
-                    return; //don't bother running the function when attribute is not mapped to the data
-                  }
-                  var context = {
-                    mode: mode,
-                    state: state,
-                    action: action
-                  };
-                  var value = _.isFunction(functionOrValue) ? functionOrValue.call(me, context, seriesRoot, mapping, row, rowIdx) : functionOrValue;
-                  if (_.isUndefined(value)) {
-                    return;
-                  }
-                  styleMap[mode] = styleMap[mode] || {};
-                  styleMap[mode][state] = styleMap[mode][state] || {};
-                  styleMap[mode][state][action] = styleMap[mode][state][action] || {};
-                  styleMap[mode][state][action][attribute] = value;
-                });
-              });
-            });
-
+          var st = $.extend(true, {}, state, {
+            data: row,
+            position: m.get('rowIdx'),
+            height: row[mapping.markerHeight],
+            width: row[mapping.markerWidth]
           });
 
-          var shapeDefinition = me.shapeDefinition ? me.shapeDefinition[id] : undefined;
-          var markerDefinition = me.markerDefinitions ? me.markerDefinitions[id] : undefined;
-          var geoJSON = (me.mapMode === 'shapes') ? shapeDefinition : markerDefinition;
-
-          return {
-            id: id,
-            label: id,
-            styleMap: styleMap,
-            geoJSON: geoJSON,
-            rowIdx: rowIdx,
-            rawData: row,
-            data: _.object(_.zip(colNames, row))
-          };
-
-        });
-
-        seriesRoot.add(series);
-      },
-
-
-      getStyleMap0: function (styleName) {
-        return Styles.getStyleMap(styleName);
-      },
-
-      getStyleMap: function (styleName) {
-        var localStyleMap = this.styleMap || {};
-        var styleMap = $.extend(true, {}, Styles.getStyleMap(styleName), localStyleMap.global, localStyleMap[styleName]);
-        // TODO: should we just drop this?
-         switch (styleName){
-           case 'shape0s':
-             return $.extend(true, styleMap, {
-               pan: {
-                 unselected: {
-                   normal: this.shapeSettings
-                 }
-               }
-             });
-         }
-        return styleMap;
-      },
-
-      _renderMarker: function (location, row, mapping, position) {
-        var myself = this;
-        if (location === undefined) {
-          Logger.log('Unable to get location for address ' + row[mapping.address] + '. Ignoring element.', 'debug');
-          return true;
-        }
-
-        var markerIcon;
-        var description;
-
-        var markerWidth = myself.markerWidth;
-        if (mapping.markerWidth) {
-          markerWidth = row[mapping.markerWidth];
-        }
-        var markerHeight = myself.markerHeight;
-        if (mapping.markerHeight) {
-          markerHeight = row[mapping.markerHeight];
-        }
-
-        var defaultMarkers = false;
-
-        if (mapping.marker) {
-          markerIcon = row[mapping.marker];
-        }
-        if (markerIcon == undefined) {
-          var st = {
-            data: row,
-            position: position,
-            width: markerWidth,
-            height: markerHeight
-          };
-          var addinName = this.markerImageGetter;
-
-          //Check for cgg graph marker
-          if (this.markerCggGraph) {
-            st.cggGraphName = this.markerCggGraph;
-            st.parameters = {};
-            _.each(this.cggGraphParameters, function (parameter) {
-              st.parameters[parameter[0]] = row[mapping[parameter[1]]];
-            });
-            addinName = 'cggMarker';
-          } else {
-            //Else resolve to urlMarker addin
-            st.url = myself.marker;
-            defaultMarkers = (myself.marker == undefined);
-            addinName = 'urlMarker';
+          // Select addIn, consider all legacy special cases
+          var addinName = this.configuration.addIns.MarkerImage.name,
+            extraSt = {},
+            extraOpts = {};
+          if (addinName === 'cggMarker') {
+            extraSt = {
+              cggGraphName: this.configuration.addIns.MarkerImage.options.cggScript,
+              parameters: _.object(_.map(this.configuration.addIns.MarkerImage.options.parameters, function (parameter) {
+                return [parameter[0], row[mapping[parameter[1]]]];
+              }))
+            };
           }
 
-          if (!addinName) {
-            addinName = 'urlMarker';
-          }
+          // Invoke addIn
           var addIn = this.getAddIn("MarkerImage", addinName);
-          markerIcon = addIn.call(this.placeholder(), st, this.getAddInOptions("MarkerImage", addIn.getName()));
+          if (!addIn) {
+            return;
+          }
+          $.extend(true, st, extraSt);
+          var opts = $.extend(true, {}, this.getAddInOptions("MarkerImage", addIn.getName()), extraOpts);
+          var markerIconUrl = addIn.call(this.placeholder(), st, opts);
+
+          // Update model's style
+          $.extend(true, m.attributes.styleMap, {
+            pan: {
+              unselected: {
+                normal: {
+                  // TODO: works for now, for openlayers. must improve this
+                  graphicWidth: st.width,
+                  graphicHeight: st.height,
+                  externalGraphic: markerIconUrl
+                }
+              }
+            }
+          });
         }
-        if (mapping.description) {
-          description = row[mapping.description];
-        }
-
-
-        var markerInfo = { // hack to pass marker information to the mapEngine. This information will be included in the events
-          longitude: location[0],
-          latitude: location[1],
-          defaultMarkers: defaultMarkers,
-          position: position,
-          mapping: mapping,
-          icon: markerIcon,
-          width: markerWidth,
-          height: markerHeight
-        };
-
-        Logger.log('About to render ' + markerInfo.longitude + ' / ' + markerInfo.latitude + ' with marker sized ' + markerHeight + ' / ' + markerWidth + 'and description ' + description, 'debug');
-        myself.mapEngine.setMarker(markerInfo, description, row);
       },
 
       /**
@@ -700,6 +418,6 @@ define([
     });
 
 
-    return NewMapComponent;
+  return NewMapComponent;
 
-  });
+});

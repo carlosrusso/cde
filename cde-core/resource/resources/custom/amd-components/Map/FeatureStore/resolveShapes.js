@@ -6,8 +6,9 @@ define([
 
   return resolveShapes;
 
-  function resolveShapes (shapeResolver, url, idList, json) {
-    var addIn = this.getAddIn('ShapeResolver', shapeResolver);
+  function resolveShapes (json, mapping, configuration) {
+    var addIn = this.getAddIn('ShapeResolver', configuration.addIns.ShapeResolver.name);
+    var url = configuration.addIns.ShapeResolver.options.url;
     if (!addIn && url) {
       if (url.endsWith('json') || url.endsWith('js')) {
         addIn = this.getAddIn('ShapeResolver', 'simpleJSON');
@@ -21,19 +22,21 @@ define([
       return deferred.promise();
     }
 
+    var idList = _.pluck(json.resultset, mapping.id);
     var tgt = this,
       st = {
         keys: idList, //TODO Consider keys -> ids
+        ids: idList,
         tableData: json,
         _simplifyPoints: ShapeConversion.simplifyPoints,
-        _parseShapeKey: this.parseShapeKey,
+        _parseShapeKey: configuration.addIns.ShapeResolver.options.parseShapeKey,
         _shapeSource: url
       };
     var promise = addIn.call(tgt, st, this.getAddInOptions('ShapeResolver', addIn.getName()));
-    promise.then(function (result) {
+    $.when(promise).then(function (result) {
       var shapeDefinitions = _.chain(result)
         .map(function (geoJSONFeature, key) {
-          return [key, geoJSONFeature]; //decode geojson to native format
+          return [key, geoJSONFeature];
         })
         .object()
         .value();

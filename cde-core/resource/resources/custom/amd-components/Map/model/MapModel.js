@@ -5,7 +5,7 @@ define([
   'cdf/lib/jquery'
 ], function (SelectionTree, SelectionStates, _, $) {
 
-  var MapSelectionTree = SelectionTree.extend({
+  var MapModel = SelectionTree.extend({
     defaults: {
       id: void 0,
       label: "",
@@ -89,6 +89,6 @@ define([
   });
 
 
-  return MapSelectionTree;
+  return MapModel;
 
 });

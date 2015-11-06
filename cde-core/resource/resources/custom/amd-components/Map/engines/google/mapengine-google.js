@@ -182,11 +182,9 @@ define([
       
     /*----------------------------*/
     
-    renderMap: function (target, tilesets) {
+    renderMap: function (target) {
       
       var me = this;
-      
-      this.tilesets = tilesets;
 
       var mapOptions = {
         mapTypeId: google.maps.MapTypeId.ROADMAP
@@ -198,7 +196,7 @@ define([
       // Set initial styleMap for the feature 
       this.map.data.setStyle(function(feature) {
         
-        return me.toNativeStyle( me.model.where({id: feature.getId()})[0].inferStyle('normal') );
+        return me.toNativeStyle( me.model.findWhere({id: feature.getId()}).inferStyle('normal') );
 
 //        return {/** @type {google.maps.Data.StyleOptions} */
 //          fillColor: "blue"
@@ -232,10 +230,14 @@ define([
         if (!feature) {
           return;
         }
-        
+
         //set id for the feature
-        feature.properties.id = modelItem.get('id');
-        
+        $.extend(true, feature, {
+          properties: {
+            id: modelItem.get('id')
+          }
+        });
+
         var f = me.map.data.addGeoJson(feature, {idPropertyName: 'id'});
         
         var style = me.toNativeStyle( modelItem.inferStyle('normal') );
@@ -302,9 +304,9 @@ define([
     
     _checkSelectionContainFeature: function(area, id) {
 
-      if (this.model.where({id:id})[0].attributes.geoJSON != undefined) {
+      if (this.model.findWhere({id:id}).get('geoJSON') != undefined) {
         
-        var geometry = this.model.where({id:id})[0].attributes.geoJSON.geometry;
+        var geometry = this.model.findWhere({id:id}).get('geoJSON').geometry;
 
         if (geometry.type == 'MultiPolygon') {
 
@@ -320,16 +322,17 @@ define([
 
               });
 
-            });    
+            });
 
           });
 
+
           return result;
 
-        }      
+        }
       }
     },
-    
+
     _removeControlZoomBox: function() {
       
       this.controls.zoomBox.listenersHandle.mousedown.remove();
