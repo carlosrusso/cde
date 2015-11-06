@@ -448,9 +448,7 @@ define([
           
           console.log('a');
           
-          me.model.flatten().filter(function (m) {
-            return m.children() == null;
-          }).each(function (m) {
+          me.model.leafs().each(function (m) {
   
             var id = m.get('id');
 

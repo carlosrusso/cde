@@ -43,10 +43,7 @@ define([
           modes[value] && modes[value].call(me);
         });
 
-        model.flatten()
-          .filter(function (m) {
-            return m.children() == null;
-          }).each(function (m) {
+        model.leafs().each(function (m) {
             me.renderItem(m);
           });
       },

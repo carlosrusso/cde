@@ -316,11 +316,7 @@ define([
           url: this.configuration.addIns.MarkerImage.options.iconUrl
         };
 
-        markersRoot.flatten()
-          .filter(function (m) {
-            // just the leafs
-            return m.children() == null;
-          })
+        markersRoot.leafs()
           .each(_.bind(processRow, this))
           .value();
 

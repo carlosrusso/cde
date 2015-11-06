@@ -183,9 +183,8 @@ define([
       return this.update();
     },
     _getSelectionSnapshot: function() {
-      var flatTree, selectionSnapshot;
-      flatTree = this.flatten();
-      selectionSnapshot = {
+      var flatTree = this.flatten();
+      var selectionSnapshot = {
         none: flatTree.filter(function(m) {
           return m.getSelection() === SelectionStates.NONE;
         }),

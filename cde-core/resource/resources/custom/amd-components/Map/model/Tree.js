@@ -74,6 +74,12 @@ define([
         });
       }
       return _.chain(list);
+    },
+
+    leafs: function(){
+      return this.flatten().filter(function(m){
+        return m.children() === null;
+      });
     }
   });
 
