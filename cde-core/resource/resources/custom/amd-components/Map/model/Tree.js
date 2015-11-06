@@ -9,7 +9,7 @@
  */
 define([
   'amd!cdf/lib/underscore',
-  'amd!cdf/lib/backbone.treemodel',
+  './backbone.treemodel',
   './baseevents/baseevents',
   'cdf/Logger'
 ], function (_, Backbone, BaseEvents, Logger) {

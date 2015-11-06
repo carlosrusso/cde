@@ -1,6 +1,22 @@
-define([
-  'cdf/lib/jquery'
-], function ($) {
+(function (root, factory) {
+  if (typeof Dashboards === 'undefined') {
+    define([
+      'cdf/lib/jquery'
+    ], factory);
+  } else {
+    namespace(root, 'CDFComponents.NewMap.Styles', factory(
+      root.$
+    ));
+  }
+  function namespace(root, path, f) {
+    var levels = path.split('.');
+    var location = levels.slice(0, levels.length - 1).reduce(function (base, level) {
+      base[level] = base[level] || {};
+      return base[level];
+    }, root);
+    location[levels[levels.length - 1]] = f;
+  }
+})(this, function ($) {
 
   var styleMaps = {
     global: {
@@ -37,26 +53,14 @@ define([
             labelAlign: 'cm',
             labelYOffset: -20,
             fill: 'red',
-            //stroke: '#ffffff',
             strokeWidth: 2,
             fillOpacity: 0.4
           },
-          hover: {
-            //fill: 'orange',
-            //stroke: "black",
-            label: 'Ouch!'
-          }
+          hover: {}
         },
         selected: {
-          normal: {
-            //fill: 'darkred',
-            label: 'Selected'
-          },
-          hover: {
-            //fill: 'darkorange',
-            //stroke: "black",
-            label: 'Whooah!'
-          }
+          normal: {},
+          hover: {}
         }
       },
       selection: {
@@ -64,16 +68,13 @@ define([
           normal: {
             fill: 'gray'
           },
-          hover: {
-          }
+          hover: {}
         },
         selected: {
           normal: {
             fill: 'red'
           },
-          hover: {
-
-          }
+          hover: {}
         }
       }
     },
@@ -81,7 +82,6 @@ define([
       pan: {
         unselected: {
           normal: {
-            label: 'yeah',
             fontColor: 'black',
             zIndex: 0,
             strokeWidth: 1
