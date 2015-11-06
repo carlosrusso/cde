@@ -165,7 +165,7 @@ define([
 
         var shapeDefinition = me.features.shapes ? me.features.shapes[id] : undefined;
         var markerDefinition = me.features.markers ? me.features.markers[id] : undefined;
-        var geoJSON = (seriesRoot.get('id') === 'shapes') ? shapeDefinition : markerDefinition;
+        var geoJSON = (seriesRoot.getFeatureType() === 'shape') ? shapeDefinition : markerDefinition;
 
         return {
           id: id,

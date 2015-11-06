@@ -156,10 +156,10 @@ define([
         id: event.feature.getId(),
         latitude: event.latLng.lat(),
         longitude: event.latLng.lng(),
-        data: me.model.where({id: event.feature.getId()})[0].get('data'),
+        data: me.model.findWhere({id: event.feature.getId()}).get('data'),
         feature: event.feature,
         featureType: featureType,
-        style: me.model.where({id: event.feature.getId()})[0].getStyle(),
+        style: me.model.findWhere({id: event.feature.getId()}).getStyle(),
         mapEngineType: 'google3',
         draw: function (style) {
           // this function is currently called by the shape callbacks
