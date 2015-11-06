@@ -126,7 +126,7 @@ define([
         key: row && row[0]
         //value: row[idx.value],
       };
-      var layer = this.layers[modelItem.getFeatureType()[1]];
+      var layer = this.layers[modelItem.root().children().first().get('id')];
       var geoJSON = modelItem.get('geoJSON');
       var me = this;
       $.when(geoJSON).then(function (feature) {

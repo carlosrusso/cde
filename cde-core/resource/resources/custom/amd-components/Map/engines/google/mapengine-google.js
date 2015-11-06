@@ -224,7 +224,7 @@ define([
         //value: row[idx.value],
       };
 //      var layer = this.layers[modelItem.getFeatureType()[1]];
-      var featureType = modelItem.getFeatureType()[1];
+      var featureType = modelItem.getFeatureType();
       var geoJSON = modelItem.get('geoJSON');
       var me = this;
       $.when(geoJSON).then(function (feature) {
@@ -381,7 +381,7 @@ define([
       
       this.map.data.addListener('click', function(e) {
 
-        var featureType = me.model.where({id: e.feature.getId()})[0].getFeatureType()[1];
+        var featureType = me.model.findWhere({id: e.feature.getId()}).getFeatureType();
         
 //        me.trigger(featureType + ':click', me.wrapEvent(e));
         me.trigger('shape' + ':click', me.wrapEvent(e));

@@ -72,14 +72,18 @@ define([
       return this.getStyle(mode, state, action || 'normal');
     },
     getFeatureType: function () {
-      return this._getFeatureType([]);
+      var featureTypes = {
+        'shapes': 'shape',
+        'markers': 'marker'
+      };
+      return featureTypes[this._getParents([])[1]];
     },
 
-    _getFeatureType: function (list) {
+    _getParents: function (list) {
       list.unshift(this.get('id'));
 
       if (this.parent()) {
-        return this.parent()._getFeatureType(list);
+        return this.parent()._getParents(list);
       } else {
         return list;
       }
