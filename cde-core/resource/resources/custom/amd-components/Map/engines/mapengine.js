@@ -12,7 +12,7 @@
  */
 
 define([
-    '../model/baseevents/baseevents',
+    '../model/baseevents',
     'cdf/Logger',
     'cdf/lib/jquery',
     'amd!cdf/lib/underscore'],
