@@ -40,7 +40,8 @@
     name: "geonames",
     label: "GeoNames",
     defaults: {
-      username: ''
+      username: '',
+      url: 'http://ws.geonames.org/searchJSON'
     },
     implementation: function(tgt, st, opt) {
       var location;
@@ -66,8 +67,7 @@
         }
       }
 
-      var url = 'http://ws.geonames.org/searchJSON';
-      var data = {
+      var params = {
         q: name.replace(/&/g,","),
         maxRows: 1,
         dataType: "json",
@@ -75,16 +75,25 @@
         featureClass: featureClass
       };
       if(featureClass) {
-        data.featureClass = featureClass;
+        params.featureClass = featureClass;
       }
-      var success = function(result) {
+      var onSuccess = function(result) {
         if(result.geonames && result.geonames.length > 0) {
           location = [parseFloat(result.geonames[0].lng),
                       parseFloat(result.geonames[0].lat)];
           st.continuationFunction(location);
         }
       };
-      $.getJSON(url, data, success);
+      var onError = function(){
+        st.continuationFunction(undefined);
+      };
+      return $.ajax({
+        dataType: "json",
+        url: opt.url,
+        data: params,
+        success: onSuccess,
+        error: onError
+      });
     }
   });
   Dashboard.registerGlobalAddIn("NewMapComponent", "LocationResolver", geonames);
