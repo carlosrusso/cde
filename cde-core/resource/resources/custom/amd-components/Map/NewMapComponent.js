@@ -167,6 +167,7 @@ define([
         return $.when(this.resolveFeatures(json))
           .then(_.bind(function (json) {
             this.initModel(json);
+            this._initControlPanel();
             this.updateSelection();
             this._processMarkerImages();
           }, this))
@@ -191,13 +192,13 @@ define([
         this._registerEvents();
 
         this.mapEngine.renderMap(ph[0]);
-        this._initControlPanel();
+        //this._initControlPanel();
         this._initPopup();
       },
 
       _initControlPanel: function () {
         var $controlPanel = $('<div class="map-controls" />').appendTo(this.placeholder());
-        this.controlPanel = new ControlPanel($controlPanel);
+        this.controlPanel = new ControlPanel($controlPanel, this.model);
         this.controlPanel.render();
         var me = this;
         var eventMapping = {

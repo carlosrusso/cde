@@ -48,20 +48,12 @@ define([
         styleMap: this.getStyleMap('global')
       });
 
-      this.model.root().set('mode', this.controlPanel.getMode());
-      var me = this;
-      this.listenTo(this.controlPanel, 'change:mode', function (model, value) {
-        me.model.root().set('mode', value);
-      });
-
       var colormap = this.getColorMap();
-
       var modelTree = {
         id: this.mapMode,
         label: this.mapMode,
         styleMap: this.getStyleMap(this.mapMode),
-        colormap: colormap//,
-        //nodes: this.initNodesModel(json)
+        colormap: colormap
       };
       this.model.add(modelTree);
       if (json && json.metadata && json.resultset) {

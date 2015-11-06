@@ -1,11 +1,11 @@
 define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
-  '../model/baseevents/baseeventsModel',
+  '../model/baseevents/baseevents',
   'cdf/lib/mustache',
   'text!./ControlPanel.html',
   'css!./ControlPanel'
-], function ($, _, BaseModel, Mustache, template) {
+], function ($, _, BaseEvents, Mustache, template) {
 
   var MODES = {
     'pan': 'pan',
@@ -13,10 +13,11 @@ define([
     'selection': 'selection'
   };
 
-  var ControlPanel = BaseModel.extend({
-    constructor: function (domNode, options) {
+  var ControlPanel = BaseEvents.extend({
+    constructor: function (domNode, model, options) {
       this.base();
       this.ph = $(domNode);
+      this.model = model;
       this.options = options;
       this.setPanningMode();
       return this;
@@ -24,7 +25,7 @@ define([
 
     render: function () {
       var viewModel = {
-        mode: this.get('mode')
+        mode: this.model.get('mode')
       };
       var html = Mustache.render(template, viewModel);
       this.ph.empty().append(html);
@@ -46,34 +47,34 @@ define([
       if (this.isSelectionMode()){
         this.trigger('selection:complete');
       }
-      this.set('mode', MODES.pan);
+      this.model.set('mode', MODES.pan);
       return this;
     },
 
     setZoomBoxMode: function () {
-      this.set('mode', MODES.zoombox);
+      this.model.set('mode', MODES.zoombox);
       return this;
     },
 
     setSelectionMode: function () {
-      this.set('mode', MODES.selection);
+      this.model.set('mode', MODES.selection);
       return this;
     },
 
     getMode: function () {
-      return this.get('mode');
+      return this.model.get('mode');
     },
 
     isPanningMode: function () {
-      return this.get('mode') === MODES.pan;
+      return this.model.get('mode') === MODES.pan;
     },
 
     isZoomBoxMode: function () {
-      return this.get('mode') === MODES.zoombox;
+      return this.model.get('mode') === MODES.zoombox;
     },
 
     isSelectionMode: function () {
-      return this.get('mode') === MODES.selection;
+      return this.model.get('mode') === MODES.selection;
     },
 
     _bindEvents: function () {
@@ -89,6 +90,14 @@ define([
       _.each(bindings, function (callback, selector) {
         me.ph.find(selector).click(_.bind(callback, me));
       });
+      this.listenTo(this.model, 'change:mode', _.bind(this._updateView, this));
+    },
+
+    _updateView: function(){
+      var mode = this.getMode();
+      this.ph.find('.map-controls-mode')
+        .removeClass(_.values(MODES).join(' '))
+        .addClass(mode)
     }
 
   });
