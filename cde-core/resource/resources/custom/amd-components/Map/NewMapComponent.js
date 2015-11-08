@@ -91,7 +91,7 @@ define([
 ], function ($, _, UnmanagedComponent,
              ILifecycle,
              ISelector, IMapModel, IConfiguration, IColorMap,
-              ControlPanel,
+             ControlPanel,
              _tileServices,
              OpenLayersEngine, GoogleMapEngine) {
 
@@ -187,17 +187,23 @@ define([
       },
 
       init: function () {
-        var ph = this.placeholder().empty();
+        var $map = $('<div class="map-container"/>');
+        $map.css({
+          position: 'relative',
+          overflow: 'hidden',
+          width: '100%',
+          height: '100%'
+        });
+        $map.appendTo(this.placeholder().empty());
         this._relayMapEngineEvents();
         this._registerEvents();
 
-        this.mapEngine.renderMap(ph[0]);
-        //this._initControlPanel();
+        this.mapEngine.renderMap($map.get(0));
         this._initPopup();
       },
 
       _initControlPanel: function () {
-        var $controlPanel = $('<div class="map-controls" />').appendTo(this.placeholder());
+        var $controlPanel = $('<div class="map-controls" />').prependTo(this.placeholder());
         this.controlPanel = new ControlPanel($controlPanel, this.model);
         this.controlPanel.render();
         var me = this;
@@ -215,6 +221,7 @@ define([
       },
 
       render: function () {
+        this._initControlPanel();
         this.mapEngine.render(this.model);
         var centerLatitude = this.configuration.viewport.center.latitude;
         var centerLongitude = this.configuration.viewport.center.longitude;
@@ -382,6 +389,7 @@ define([
           this.placeholder().append($popupDivHolder.html("None"));
         }
       },
+
       markerClickCallback: function (event) {
         return;
         var elt = event.data;

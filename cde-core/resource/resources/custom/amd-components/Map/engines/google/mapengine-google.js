@@ -47,7 +47,7 @@ define([
     
     constructor: function(options) {
       this.base();
-      //$.extend(this, options);
+      $.extend(this, options);
       this.controls = {}; // map controls
     },
     
@@ -392,12 +392,12 @@ define([
 
     zoomIn: function () {
       console.log('zoomIn');
-      this.mapEngine.map.setZoom(this.mapEngine.map.getZoom() + 1);
+      this.map.setZoom(this.map.getZoom() + 1);
     },
 
     zoomOut: function () {
       console.log('zoomOut');
-      this.mapEngine.map.setZoom(this.mapEngine.map.getZoom() - 1);
+      this.map.setZoom(this.map.getZoom() - 1);
     },
     
     setSelectionMode: function () {
