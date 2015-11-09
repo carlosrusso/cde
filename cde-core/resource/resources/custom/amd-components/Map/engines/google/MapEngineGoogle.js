@@ -165,7 +165,14 @@ define([
     },
       
     /*----------------------------*/
-    
+
+    updateItem: function() {
+
+      console.log('updateItem');
+
+
+    },
+
     renderMap: function (target) {
       
       var me = this;
