@@ -480,22 +480,77 @@ define([
   
             var id = m.get('id');
 
-            var result = me._checkSelectionContainFeature(me.controls.boxSelector.gribBoundingBox, id);
+//            var result = me._checkSelectionContainFeature(me.controls.boxSelector.gribBoundingBox, id);
+//            
+//            // Area contains shape
+//            if (result) {
+//              
+//              m.setSelection( (m.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
+//              
+//              var style = me.toNativeStyle( m.inferStyle('normal') );
+//              var feature = me.map.data.getFeatureById(id);
+//              
+//              me.map.data.overrideStyle(feature, style);
+//            }
+//            
+//            else {
+//              m.setSelection(SelectionStates.NONE);
+//            }
             
-            // Area contains shape
-            if (result) {
-              
-              m.setSelection( (m.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
-              
-              var style = me.toNativeStyle( m.inferStyle('normal') );
-              var feature = me.map.data.getFeatureById(id);
-              
-              me.map.data.overrideStyle(feature, style);
+            
+            
+            
+            if (me.map.data.getFeatureById(id) != undefined) {
+
+              me.map.data.getFeatureById(id).toGeoJson(function(obj){
+
+                var geometry = obj.geometry
+                var result = false;
+
+                if (geometry.type == 'MultiPolygon') {
+
+                  result = _.some(geometry.coordinates, function(value) {
+
+                    return _.some(value, function(value) {
+
+                      return _.some(value, function(value) {
+
+                        var latLng = new google.maps.LatLng(value[1], value[0]);
+
+                        return me.controls.boxSelector.gribBoundingBox.getBounds().contains(latLng);
+
+                      });
+
+                    });
+
+                  });
+
+                }
+                
+                // Area contains shape
+                if (result) {
+
+                  m.setSelection( (m.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
+
+                  var style = me.toNativeStyle( m.inferStyle('normal') );
+                  var feature = me.map.data.getFeatureById(id);
+
+                  me.map.data.overrideStyle(feature, style);
+                }
+
+                else {
+                  m.setSelection(SelectionStates.NONE);
+                }
+
+              });
+
             }
             
-            else {
-              m.setSelection(SelectionStates.NONE);
-            }
+            
+            
+            
+            
+            
               
           });
           
