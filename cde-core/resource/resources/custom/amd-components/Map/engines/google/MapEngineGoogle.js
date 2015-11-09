@@ -166,7 +166,15 @@ define([
       
     /*----------------------------*/
 
-    updateItem: function() {
+    updateItem: function(modelItem) {
+
+      var id = modelItem.get('id');
+
+      var style = this.toNativeStyle( modelItem.inferStyle() );
+      var feature = this.map.data.getFeatureById(id);
+
+      this.map.data.overrideStyle(feature, style);
+
 
       console.log('updateItem');
 
@@ -187,8 +195,9 @@ define([
       // Set initial styleMap for the feature 
       this.map.data.setStyle(function(feature) {
         
-        return me.toNativeStyle( me.model.findWhere({id: feature.getId()}).inferStyle('normal') );
-        
+        //return me.toNativeStyle( me.model.findWhere({id: feature.getId()}).inferStyle('normal') );
+        return me.toNativeStyle( me.model.findWhere({id: feature.getId()}).inferStyle() );
+
       });
       
       this.addControls();
@@ -227,8 +236,6 @@ define([
 
         var f = me.map.data.addGeoJson(feature, {idPropertyName: 'id'});
         
-        var style = me.toNativeStyle( modelItem.inferStyle('normal') );
-
       });
 
     },
@@ -282,70 +289,70 @@ define([
       
     },
     
-    _checkSelectionContainFeature: function(area, id) {
-
-      if (this.model.findWhere({id:id}).get('geoJSON') != undefined) {
-        
-        var geometry = this.model.findWhere({id:id}).get('geoJSON').geometry;
-
-        if (geometry.type == 'MultiPolygon') {
-
-          var result = _.some(geometry.coordinates, function(value) {
-
-            return _.some(value, function(value) {
-
-              return _.some(value, function(value) {
-
-                var latLng = new google.maps.LatLng(value[1], value[0]);
-
-                return area.getBounds().contains(latLng);
-
-              });
-
-            });
-
-          });
-
-
-          return result;
-
-        }
-      }
-      
-//      if (this.map.data.getFeatureById(id) != undefined) {
-//      
-//        this.map.data.getFeatureById(id).toGeoJson(function(obj){
+//    _checkSelectionContainFeature: function(area, id) {
 //
-//          var geometry = obj.geometry;
+//      if (this.model.findWhere({id:id}).get('geoJSON') != undefined) {
 //
-//          if (geometry.type == 'MultiPolygon') {
+//        var geometry = this.model.findWhere({id:id}).get('geoJSON').geometry;
 //
-//            var result = _.some(geometry.coordinates, function(value) {
+//        if (geometry.type == 'MultiPolygon') {
+//
+//          var result = _.some(geometry.coordinates, function(value) {
+//
+//            return _.some(value, function(value) {
 //
 //              return _.some(value, function(value) {
 //
-//                return _.some(value, function(value) {
+//                var latLng = new google.maps.LatLng(value[1], value[0]);
 //
-//                  var latLng = new google.maps.LatLng(value[1], value[0]);
-//
-//                  return area.getBounds().contains(latLng);
-//
-//                });
+//                return area.getBounds().contains(latLng);
 //
 //              });
 //
 //            });
 //
+//          });
 //
-//            return result;
 //
-//          }
+//          return result;
 //
-//        });
-//
+//        }
 //      }
-      
-    },
+//
+////      if (this.map.data.getFeatureById(id) != undefined) {
+////
+////        this.map.data.getFeatureById(id).toGeoJson(function(obj){
+////
+////          var geometry = obj.geometry;
+////
+////          if (geometry.type == 'MultiPolygon') {
+////
+////            var result = _.some(geometry.coordinates, function(value) {
+////
+////              return _.some(value, function(value) {
+////
+////                return _.some(value, function(value) {
+////
+////                  var latLng = new google.maps.LatLng(value[1], value[0]);
+////
+////                  return area.getBounds().contains(latLng);
+////
+////                });
+////
+////              });
+////
+////            });
+////
+////
+////            return result;
+////
+////          }
+////
+////        });
+////
+////      }
+//
+//    },
 
     _removelistenersHandle: function() {
       
@@ -368,10 +375,8 @@ define([
         var id = event.feature.getId();
         var modelItem = me.model.findWhere({id:id});
         
-        var style = me.toNativeStyle( modelItem.inferStyle(action) );
-              
-        me.map.data.overrideStyle(event.feature, style);
-        
+        modelItem.setHover(action === 'hover');
+
       }
       
       this.map.data.addListener('mouseover', function(event) {
@@ -444,9 +449,7 @@ define([
         
         modelItem.setSelection( (modelItem.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
               
-        var style = me.toNativeStyle( modelItem.inferStyle('normal') );
-              
-        me.map.data.overrideStyle(event.feature, style);
+        me.updateItem(modelItem);
 
       });
       
@@ -487,26 +490,6 @@ define([
   
             var id = m.get('id');
 
-//            var result = me._checkSelectionContainFeature(me.controls.boxSelector.gribBoundingBox, id);
-//            
-//            // Area contains shape
-//            if (result) {
-//              
-//              m.setSelection( (m.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
-//              
-//              var style = me.toNativeStyle( m.inferStyle('normal') );
-//              var feature = me.map.data.getFeatureById(id);
-//              
-//              me.map.data.overrideStyle(feature, style);
-//            }
-//            
-//            else {
-//              m.setSelection(SelectionStates.NONE);
-//            }
-            
-            
-            
-            
             if (me.map.data.getFeatureById(id) != undefined) {
 
               me.map.data.getFeatureById(id).toGeoJson(function(obj){
@@ -539,10 +522,7 @@ define([
 
                   m.setSelection( (m.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
 
-                  var style = me.toNativeStyle( m.inferStyle('normal') );
-                  var feature = me.map.data.getFeatureById(id);
-
-                  me.map.data.overrideStyle(feature, style);
+                  me.updateItem(m);
                 }
 
                 else {
@@ -598,7 +578,6 @@ define([
       });
       
       console.log('Selection mode enable');
-      this.updateFeatures();
     },
 
     setZoomBoxMode: function () {
@@ -675,7 +654,6 @@ define([
       
       
       console.log('Zoom mode enable');
-      this.updateFeatures();
     },
     
     setPanningMode: function() {
@@ -693,10 +671,6 @@ define([
 
           modelItem.setSelection( SelectionStates.NONE );
 
-          //var style = me.toNativeStyle( modelItem.inferStyle('normal') );
-
-          //me.map.data.overrideStyle(event.feature, style);
-
         });
 
         // Select new item
@@ -704,45 +678,15 @@ define([
         var modelItem = me.model.findWhere({id:id});
         
         modelItem.setSelection( (modelItem.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
-//        modelItem.setSelection( SelectionStates.ALL );
-              
-        var style = me.toNativeStyle( modelItem.inferStyle('normal') );
-              
-        me.map.data.overrideStyle(event.feature, style);
-        
-        me.updateFeatures();
+
+        me.updateItem(modelItem);
         
       });
       
       console.log('Selection mode enable');
 
-      this.updateFeatures();
     },
     
-    updateFeatures: function() {
-      
-      // revertStyle deveria disparar setStyle para todas as features. mas nao esta
-      //this.map.data.revertStyle();
-      
-      // Codigo temporario
-      var me = this;
-      
-      me.model.flatten().filter(function (m) {
-        return m.children() == null;
-      }).each(function (m) {
-
-        var id = m.get('id');
-
-        var style = me.toNativeStyle( m.inferStyle('normal') );
-        var feature = me.map.data.getFeatureById(id);
-
-        me.map.data.overrideStyle(feature, style);
-
-      });
-      
-      
-    },
-  
     /*-----------------------------*/
 
     unselectPrevShape: function (key, shapes, shapeStyle) {
