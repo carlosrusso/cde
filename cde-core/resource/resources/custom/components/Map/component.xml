@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <DesignerComponent>
   <Header>
-    <Name>NewMapComponentLegacy</Name>
-    <IName>NewMapComponentLegacy</IName>
-    <Description>Map Component Legacy</Description>
+    <Name>NewMapComponent</Name>
+    <IName>NewMapComponent</IName>
+    <Description>Map Component</Description>
     <Category>CUSTOMCOMPONENTS</Category>
     <CatDescription>Custom</CatDescription>
     <Type>PalleteEntry</Type>
@@ -61,22 +61,16 @@
       </Definition>
     </Model>
     <Implementation supportsLegacy="true" supportsAMD="true">
-      <Code src="NewMapComponent.js" />
+      <Code src="Map-export.js" />
       <Dependencies>
+        <Dependency src="defineGlobals.js" version="1.0">Map-Globals</Dependency>
+        <Dependency src="Map.js" version="1.0">Map</Dependency>
         <!-- <Dependency src="lib/OpenLayers.js" version="2.13.1">OpenLayers</Dependency> -->
-        <Dependency src="MapComponentAsyncLoader.js" version="1.0">MapComponentAsyncLoader</Dependency>
-        <Dependency src="addIns/mapAddins.js" version="1.0">NewMapComponent_Addins</Dependency>
-        <Dependency src="addIns/MarkerImage/urlMarker/urlMarker.js" version="1.0">NewMapComponent_Addins_MarkerImage_urlMarker</Dependency>
-        <Dependency src="addIns/MarkerImage/cggMarker/cggMarker.js" version="1.0">NewMapComponent_Addins_MarkerImage_cggMarker</Dependency>
-        <Dependency src="addIns/ShapeResolver/kml.js" version="1.0">NewMapComponent_Addins_ShapeResolver_kml</Dependency>
-        <Dependency src="addIns/ShapeResolver/simpleJSON.js" version="1.0">NewMapComponent_Addins_ShapeResolver_simpleJSON</Dependency>
-        <Dependency src="addIns/ShapeResolver/geoJSON.js" version="1.0">NewMapComponent_Addins_ShapeResolver_geoJSON</Dependency>
-        <Dependency src="mapengine.js" version="1.0">NewMapComponent_mapengine</Dependency>
-        <Dependency src="mapengine-google.js" version="1.0">NewMapComponent_mapengine_google</Dependency>
-        <Dependency src="mapengine-openlayers.js" version="1.0">NewMapComponent_mapengine_openlayers</Dependency>
       </Dependencies>
       <Styles>
-        <Style version="1.0" src="NewMapComponent.css">NewMapComponent</Style>
+        <Style version="1.0" src="Map.css">NewMapComponent-style</Style>
+        <Style version="1.0" src="engines/openlayers2/style-openlayers2">NewMapComponent-style-ol2</Style>
+        <Style version="1.0" src="engines/google/style-google.css">NewMapComponent-style-google</Style>
       </Styles>
       <CustomProperties>
         <DesignerProperty>
