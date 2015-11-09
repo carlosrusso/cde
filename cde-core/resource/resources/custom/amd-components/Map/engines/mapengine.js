@@ -41,11 +41,21 @@ define([
             'pan': me.setPanningMode
           };
           modes[value] && modes[value].call(me);
+          model.leafs().each(function (m) {
+            me.updateItem(m);
+          })
+        });
+
+        this.listenTo(this.model, 'change:isSelected change:isHighlighted change:isVisible', function (model, value) {
+          if (model.children()) {
+            return; // we only want to update leafs
+          }
+          me.updateItem(model);
         });
 
         model.leafs().each(function (m) {
-            me.renderItem(m);
-          });
+          me.renderItem(m);
+        });
       },
       updateViewport: function (centerLongitude, centerLatitude, zoomLevel) {
       },

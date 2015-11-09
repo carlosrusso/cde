@@ -134,9 +134,10 @@ define([
           return;
         }
         var f = me._geoJSONParser.parseFeature(feature);
-        var style = modelItem.inferStyle('normal');
+        var style = modelItem.inferStyle();
         $.extend(true, f, {
           attributes: {
+            id: modelItem.get('id'),
             model: modelItem,
             data: data
           },
@@ -315,7 +316,6 @@ define([
       this.controls.clickCtrl.activate();
       this.controls.zoomBox.deactivate();
       this.controls.boxSelector.deactivate();
-      this.updateFeatures();
     },
 
     setZoomBoxMode: function () {
@@ -323,7 +323,6 @@ define([
       this.controls.clickCtrl.deactivate();
       this.controls.zoomBox.activate();
       this.controls.boxSelector.deactivate();
-      this.updateFeatures();
     },
 
     setSelectionMode: function () {
@@ -331,7 +330,6 @@ define([
       this.controls.clickCtrl.deactivate();
       this.controls.boxSelector.activate();
       this.controls.zoomBox.deactivate();
-      this.updateFeatures();
     },
 
     zoomIn: function () {
@@ -414,25 +412,16 @@ define([
       var me = this;
 
       function event_relay(e) {
-        var featureType = getLayerFromEvent(e);
-
         var events = {
           'featurehighlighted': 'mouseover',
           'featureunhighlighted': 'mouseout'
         };
 
-        var model = e.feature.attributes.model;
-        var styles = {
-          'featurehighlighted': model.inferStyle('hover'),
-          'featureunhighlighted': model.inferStyle('normal')
-        };
-
         //console.log('hoverCtrl', featureType, e.type, styles[e.type]);
         if (events[e.type]) {
-          var style = me.toNativeStyle(styles[e.type]);
-          e.feature.style = style;
-          e.feature.layer.drawFeature(e.feature, style);
-          me.trigger(featureType + ':' + events[e.type], me.wrapEvent(e));
+          var model = e.feature.attributes.model;
+          model.setHover(events[e.type] === 'mouseover');
+          me.trigger(model.getFeatureType() + ':' + events[e.type], me.wrapEvent(e));
         }
       }
 
@@ -504,33 +493,30 @@ define([
       var createEventHandler = function (callback) {
         return function (e) {
           var model = e.feature.attributes.model;
-          var style = me.toNativeStyle(callback(model));
-          e.feature.style = style;
-          e.feature.layer.drawFeature(e.feature, style);
-          var featureType = getLayerFromEvent(e);
-          me.trigger(featureType + ':click', me.wrapEvent(e));
+          callback(model);
+          me.trigger(model.getFeatureType() + ':click', me.wrapEvent(e));
         }
       };
       var eventHandlers = {
-        'featureselected': createEventHandler(function (model) {
-          model.setSelection(SelectionStates.ALL);
+        'featureselected': createEventHandler(function (modelItem) {
+          modelItem.setSelection(SelectionStates.ALL);
           var actionMap = {
             'pan': 'hover',
             'zoombox': 'hover',
             'selection': 'normal'
           };
-          var action = actionMap[model.root().get('mode')];
-          return model.inferStyle(action);
+          var action = actionMap[modelItem.root().get('mode')];
+          modelItem.setHover(action === 'hover');
         }),
-        'featureunselected': createEventHandler(function (model) {
-          model.setSelection(SelectionStates.NONE);
+        'featureunselected': createEventHandler(function (modelItem) {
+          modelItem.setSelection(SelectionStates.NONE);
           var actionMap = {
             'pan': 'normal',
             'zoombox': 'normal',
             'selection': 'hover'
           };
-          var action = actionMap[model.root().get('mode')];
-          return model.inferStyle(action);
+          var action = actionMap[modelItem.root().get('mode')];
+          modelItem.setHover(action === 'hover');
         })
       };
 
@@ -542,15 +528,16 @@ define([
 
     },
 
-    updateFeatures: function () {
-      var me = this;
-      var features = _.union(this.layers.shapes.features, this.layers.markers.features);
-      _.each(features, function (f) {
-        var model = f.attributes.model;
-        var style = me.toNativeStyle(model.inferStyle('normal'));
-        f.style = style;
-        f.layer.drawFeature(f, style);
-      });
+    updateItem: function (modelItem) {
+      var style = this.toNativeStyle(modelItem.inferStyle());
+      var featureType = modelItem.getFeatureType();
+      var layerName = featureType === 'marker' ? 'markers' : 'shapes';
+      var layer = this.layers[layerName];
+      var feature = layer.getFeaturesByAttribute('id', modelItem.get('id'))[0];
+      if (feature) {
+        feature.style = style;
+        feature.layer.drawFeature(feature, style);
+      }
     },
 
     tileLayer: function (name) {
@@ -624,15 +611,6 @@ define([
     }
   });
 
-  function getLayerFromEvent(e) {
-    var layer;
-    if (e.feature.layer.name == 'Shapes') {
-      layer = 'shape';
-    } else {
-      layer = 'marker';
-    }
-    return layer;
-  }
 
   return OpenLayersEngine;
 
