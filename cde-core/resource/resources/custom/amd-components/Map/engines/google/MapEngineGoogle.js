@@ -14,7 +14,7 @@
 define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
-  '../mapengine',
+  '../MapEngine',
   './MapComponentAsyncLoader',
   '../../model/SelectionStates',
   'css!./style-google'
@@ -139,10 +139,10 @@ define([
         id: event.feature.getId(),
         latitude: event.latLng.lat(),
         longitude: event.latLng.lng(),
-        data: me.model.where({id: event.feature.getId()})[0].get('data'),
+        data: me.model.findWhere({id: event.feature.getId()}).get('data'),
         feature: event.feature,
         featureType: featureType,
-        style: me.model.where({id: event.feature.getId()})[0].getStyle(),
+        style: me.model.findWhere({id: event.feature.getId()}).getStyle(),
         mapEngineType: 'google3',
         draw: function (style) {
           // this function is currently called by the shape callbacks
@@ -203,7 +203,7 @@ define([
         //value: row[idx.value],
       };
 //      var layer = this.layers[modelItem.getFeatureType()[1]];
-      var featureType = modelItem.getFeatureType()[1];
+      var featureType = modelItem.getFeatureType();
       var geoJSON = modelItem.get('geoJSON');
       var me = this;
       $.when(geoJSON).then(function (feature) {
@@ -405,7 +405,7 @@ define([
       
       this.map.data.addListener('click', function(e) {
 
-        var featureType = me.model.where({id: e.feature.getId()})[0].getFeatureType()[1];
+        var featureType = me.model.findWhere({id: event.feature.getId()}).getFeatureType();
         
 //        me.trigger(featureType + ':click', me.wrapEvent(e));
         me.trigger('shape' + ':click', me.wrapEvent(e));
