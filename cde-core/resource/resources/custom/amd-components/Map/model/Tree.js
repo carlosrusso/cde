@@ -10,7 +10,7 @@
 define([
   'amd!cdf/lib/underscore',
   './backbone.treemodel',
-  './baseevents/baseevents',
+  './baseevents',
   'cdf/Logger'
 ], function (_, Backbone, BaseEvents, Logger) {
 
@@ -74,6 +74,12 @@ define([
         });
       }
       return _.chain(list);
+    },
+
+    leafs: function(){
+      return this.flatten().filter(function(m){
+        return m.children() === null;
+      });
     }
   });
 

@@ -1,19 +1,4 @@
-(function (root, factory) {
-  if (typeof Dashboards === 'undefined') {
-    define([], factory);
-  } else {
-    namespace(root, 'CDFComponents.NewMap.tileServices', factory(
-    ));
-  }
-  function namespace(root, path, f) {
-    var levels = path.split('.');
-    var location = levels.slice(0, levels.length - 1).reduce(function (base, level) {
-      base[level] = base[level] || {};
-      return base[level];
-    }, root);
-    location[levels[levels.length - 1]] = f;
-  }
-})(this, function () {
+define([], function () {
 
   /**
    * TileServices (servers providing png images representing the map)
@@ -29,7 +14,7 @@
    "http://otile{switch:1,2,3,4}.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png"
    */
 
-  var tileServices = {
+  var _tileServices = {
     // list of tileset services that were tested and are working at 2013-11-04, see http://mc.bbbike.org/mc/?num=2 for comparison
     'default': "http://otile{switch:1,2,3,4}.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png", //MapQuest tile server
     'apple': "http://gsp2.apple.com/tile?api=1&style=slideshow&layers=default&lang=en_US&z=${z}&x=${x}&y=${y}&v=9",
@@ -81,7 +66,17 @@
   };
 
 
-  return tileServices;
+  return {
+    tileServices: _tileServices,
+    otherTileServices: [
+      // These are tilesets using special code
+      //'google'
+    ],
+    tileServicesOptions: {
+      // WIP: interface for overriding defaults
+      'apple': {minZoom: 3, maxZoom: 14}
+    }
+  };
 
 
 });

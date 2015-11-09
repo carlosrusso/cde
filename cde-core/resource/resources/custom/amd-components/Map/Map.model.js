@@ -2,10 +2,10 @@ define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
   './model/MapModel',
-  './getMapping',
+  './_getMapping',
   './FeatureStore/resolveShapes',
   './FeatureStore/resolveMarkers',
-  './Styles'
+  './Map.featureStyles'
 ], function ($, _,
              MapModel,
              getMapping,
@@ -48,26 +48,24 @@ define([
         styleMap: this.getStyleMap('global')
       });
 
-      this.model.root().set('mode', this.controlPanel.getMode());
-      var me = this;
-      this.listenTo(this.controlPanel, 'change:mode', function (model, value) {
-        me.model.root().set('mode', value);
-      });
-
-      var colormap = this.getColorMap();
-
-      var modelTree = {
-        id: this.mapMode,
-        label: this.mapMode,
-        styleMap: this.getStyleMap(this.mapMode),
-        colormap: colormap//,
-        //nodes: this.initNodesModel(json)
-      };
-      this.model.add(modelTree);
+      var seriesRoot = this._initSeries(this.mapMode, json);
       if (json && json.metadata && json.resultset) {
-        this._addSeriesToModel(json);
+        this._addSeriesToModel(seriesRoot, json);
       }
 
+    },
+
+    _initSeries: function (seriesId, json) {
+      var colormap = this.getColorMap();
+      var seriesRoot = {
+        id: seriesId,
+        label: seriesId,
+        styleMap: this.getStyleMap(seriesId),
+        colormap: colormap,
+        extremes: this._detectExtremes(json)
+      };
+      this.model.add(seriesRoot);
+      return this.model.findWhere({id: seriesId});
     },
 
     visualRoles: {},
@@ -114,14 +112,22 @@ define([
     _detectExtremes: function (json) {
       var extremes = _.chain(this.visualRoles)
         .map(function (colIndex, role) {
-          if (json.metadata[colIndex].colType !== 'Numeric') {
-            return [role, {}];
-          }
           var values = _.pluck(json.resultset, colIndex);
-          return [role, {
-            min: _.min(values),
-            max: _.max(values)
-          }]
+          var obj;
+          if (json.metadata[colIndex].colType === 'Numeric') {
+            obj = {
+              type: 'numeric',
+              min: _.min(values),
+              max: _.max(values)
+            };
+          } else {
+            obj = {
+              type: 'categoric',
+              items: _.uniq(values)
+            }
+          }
+          return [role, obj];
+
         })
         .object()
         .value();
@@ -129,10 +135,8 @@ define([
       return extremes;
     },
 
-    _addSeriesToModel: function (json) {
+    _addSeriesToModel: function (seriesRoot, json) {
       var mapping = $.extend({}, this.mapping);
-      var seriesRoot = this.model.findWhere({'id': this.mapMode});
-      seriesRoot.set('extremes', this._detectExtremes(json));
 
       var colNames = _.pluck(json.metadata, 'colName');
 
@@ -173,7 +177,7 @@ define([
 
         var shapeDefinition = me.features.shapes ? me.features.shapes[id] : undefined;
         var markerDefinition = me.features.markers ? me.features.markers[id] : undefined;
-        var geoJSON = (seriesRoot.get('id') === 'shapes') ? shapeDefinition : markerDefinition;
+        var geoJSON = (seriesRoot.getFeatureType() === 'shape') ? shapeDefinition : markerDefinition;
 
         return {
           id: id,

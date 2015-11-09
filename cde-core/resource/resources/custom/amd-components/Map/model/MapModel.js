@@ -10,6 +10,7 @@ define([
       id: void 0,
       label: "",
       isSelected: false,
+      isHighlighted: false,
       isVisible: true,
       numberOfSelectedItems: 0,
       numberOfItems: 0,
@@ -24,6 +25,14 @@ define([
           hover: {}
         }
       }
+    },
+
+    getHover: function(){
+      return this.get('isHighlighted');
+    },
+
+    setHover: function(bool){
+      return this.set('isHighlighted', bool === true);
     },
 
     /**
@@ -67,19 +76,26 @@ define([
     },
 
     inferStyle: function (action) {
+      if (_.isUndefined(action)){
+        action = this.getHover() === true?  'hover': 'normal';
+      }
       var mode = this.root().get('mode');
       var state = (this.getSelection() === true) ? 'selected' : 'unselected';
       return this.getStyle(mode, state, action || 'normal');
     },
     getFeatureType: function () {
-      return this._getFeatureType([]);
+      var featureTypes = {
+        'shapes': 'shape',
+        'markers': 'marker'
+      };
+      return featureTypes[this._getParents([])[1]];
     },
 
-    _getFeatureType: function (list) {
+    _getParents: function (list) {
       list.unshift(this.get('id'));
 
       if (this.parent()) {
-        return this.parent()._getFeatureType(list);
+        return this.parent()._getParents(list);
       } else {
         return list;
       }

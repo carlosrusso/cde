@@ -1,5 +1,5 @@
 define([], function () {
-  var ShapeConversion = {
+  var shapeConversion = {
 
     simplifyPoints: function (points, precision_m) {
       if (precision_m < 0) {
@@ -94,6 +94,6 @@ define([], function () {
 
   };
 
-  return ShapeConversion;
+  return shapeConversion;
 
 });

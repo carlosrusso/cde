@@ -12,7 +12,7 @@
  */
 
 define([
-    '../model/baseevents/baseevents',
+    '../model/baseevents',
     'cdf/Logger',
     'cdf/lib/jquery',
     'amd!cdf/lib/underscore'],
@@ -41,14 +41,21 @@ define([
             'pan': me.setPanningMode
           };
           modes[value] && modes[value].call(me);
+          model.leafs().each(function (m) {
+            me.updateItem(m);
+          })
         });
 
-        model.flatten()
-          .filter(function (m) {
-            return m.children() == null;
-          }).each(function (m) {
-            me.renderItem(m);
-          });
+        this.listenTo(this.model, 'change:isSelected change:isHighlighted change:isVisible', function (model, value) {
+          if (model.children()) {
+            return; // we only want to update leafs
+          }
+          me.updateItem(model);
+        });
+
+        model.leafs().each(function (m) {
+          me.renderItem(m);
+        });
       },
       updateViewport: function (centerLongitude, centerLatitude, zoomLevel) {
       },

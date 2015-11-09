@@ -3,7 +3,7 @@
 define([
   'amd!cdf/lib/underscore',
   'amd!cdf/lib/backbone',
-  'cdf/components/BaseComponent'],
+  'cdf/components/BaseComponent'], // TODO: Why BaseComponent, and not simply Base?
   function( _, Backbone, BaseComponent ) {
 
     var rest = _.rest;
