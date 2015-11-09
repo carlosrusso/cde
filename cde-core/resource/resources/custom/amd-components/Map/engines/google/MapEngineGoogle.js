@@ -14,7 +14,7 @@
 define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
-  '../MapEngine',
+  '../mapengine',
   './MapComponentAsyncLoader',
   '../../model/SelectionStates',
   'css!./style-google'
@@ -47,8 +47,10 @@ define([
     
     constructor: function(options) {
       this.base();
-      $.extend(this, options);
+      //$.extend(this, options);
       this.controls = {}; // map controls
+      this.controls.listenersHandle = {};
+
     },
     
     init: function () {
@@ -131,35 +133,16 @@ define([
         });
     },
 
-//    toNativeStyle: function (foreignStyle) {
-//      var validStyle = {};
-//      _.each(foreignStyle, function (value, key) {
-//        switch (key) {
-//          case 'strokeWidth':
-//            validStyle['strokeWeight'] = value;
-//            break;
-//          case 'zIndex':
-//          case 'visible':
-//          case 'fillColor':
-//          case 'fillOpacity':
-//          case 'strokeColor':
-//          case 'strokeOpacity':
-//            validStyle[key] = value;
-//        }
-//      });
-//      return validStyle;
-//    },
-
     wrapEvent: function (event, featureType) {
       var me = this;
       return {
         id: event.feature.getId(),
         latitude: event.latLng.lat(),
         longitude: event.latLng.lng(),
-        data: me.model.findWhere({id: event.feature.getId()}).get('data'),
+        data: me.model.where({id: event.feature.getId()})[0].get('data'),
         feature: event.feature,
         featureType: featureType,
-        style: me.model.findWhere({id: event.feature.getId()}).getStyle(),
+        style: me.model.where({id: event.feature.getId()})[0].getStyle(),
         mapEngineType: 'google3',
         draw: function (style) {
           // this function is currently called by the shape callbacks
@@ -198,10 +181,6 @@ define([
       this.map.data.setStyle(function(feature) {
         
         return me.toNativeStyle( me.model.findWhere({id: feature.getId()}).inferStyle('normal') );
-
-//        return {/** @type {google.maps.Data.StyleOptions} */
-//          fillColor: "blue"
-//        }
         
       });
       
@@ -224,7 +203,7 @@ define([
         //value: row[idx.value],
       };
 //      var layer = this.layers[modelItem.getFeatureType()[1]];
-      var featureType = modelItem.getFeatureType();
+      var featureType = modelItem.getFeatureType()[1];
       var geoJSON = modelItem.get('geoJSON');
       var me = this;
       $.when(geoJSON).then(function (feature) {
@@ -242,18 +221,7 @@ define([
         var f = me.map.data.addGeoJson(feature, {idPropertyName: 'id'});
         
         var style = me.toNativeStyle( modelItem.inferStyle('normal') );
-        
-        //me.map.data.overrideStyle(feature, style);
-//        var style = modelItem.inferStyle('normal');
-//        $.extend(true, f, {
-//          attributes: {
-//            model: modelItem,
-//            data: data
-//          },
-//          style: me.toNativeStyle(style)
-//        });
-//        layer.addFeatures([f]);
-        console.log(1);
+
       });
 
     },
@@ -297,9 +265,13 @@ define([
     
     addControls: function () {
       
+      this._addControlHover();
       //this._addControlClick();
       this._addControlZoomBox();
       this._addControlBoxSelector();
+      
+      // Inicializa mapa no PanningMode
+      //this.setPanningMode();
       
     },
     
@@ -332,25 +304,79 @@ define([
 
         }
       }
+      
+//      if (this.map.data.getFeatureById(id) != undefined) {
+//      
+//        this.map.data.getFeatureById(id).toGeoJson(function(obj){
+//
+//          var geometry = obj.geometry;
+//
+//          if (geometry.type == 'MultiPolygon') {
+//
+//            var result = _.some(geometry.coordinates, function(value) {
+//
+//              return _.some(value, function(value) {
+//
+//                return _.some(value, function(value) {
+//
+//                  var latLng = new google.maps.LatLng(value[1], value[0]);
+//
+//                  return area.getBounds().contains(latLng);
+//
+//                });
+//
+//              });
+//
+//            });
+//
+//
+//            return result;
+//
+//          }
+//
+//        });
+//
+//      }
+      
     },
 
-    _removeControlZoomBox: function() {
+    _removelistenersHandle: function() {
       
-      this.controls.zoomBox.listenersHandle.mousedown.remove();
-      this.controls.zoomBox.listenersHandle.mouseup.remove();
-      this.controls.zoomBox.listenersHandle.mousemove.remove();
+      var me = this;
+
+      _.keys(this.controls.listenersHandle).forEach(function(m) {
+
+        me.controls.listenersHandle[m].remove();
+
+      });      
       
     },
     
-    _removeControlBoxSelector: function() {
+    _addControlHover: function() {
+
+      var me = this;
+
+      var setStyle = function(event, action) {
+        
+        var id = event.feature.getId();
+        var modelItem = me.model.findWhere({id:id});
+        
+        var style = me.toNativeStyle( modelItem.inferStyle(action) );
+              
+        me.map.data.overrideStyle(event.feature, style);
+        
+      }
       
-      this.controls.boxSelector.listenersHandle.mousedown.remove();
-      this.controls.boxSelector.listenersHandle.mouseup.remove();
-      this.controls.boxSelector.listenersHandle.mousemove.remove();
-      this.controls.boxSelector.listenersHandle.click.remove();
+      this.map.data.addListener('mouseover', function(event) {
+        setStyle(event, 'hover');
+      });
+
+      this.map.data.addListener('mouseout', function(event) {
+        setStyle(event, 'normal');
+      });
       
     },
-
+    
     _addControlZoomBox: function() {
       
       var me = this;  
@@ -359,7 +385,6 @@ define([
       me.controls.zoomBox.bounds = null;
       me.controls.zoomBox.gribBoundingBox = null;
       me.controls.zoomBox.mouseIsDown = false;
-      me.controls.zoomBox.listenersHandle = {};
       
     },
 
@@ -371,7 +396,6 @@ define([
       me.controls.boxSelector.bounds = null;
       me.controls.boxSelector.gribBoundingBox = null;
       me.controls.boxSelector.mouseIsDown = false;
-      me.controls.boxSelector.listenersHandle = {};
       
     },
     
@@ -381,7 +405,7 @@ define([
       
       this.map.data.addListener('click', function(e) {
 
-        var featureType = me.model.findWhere({id: e.feature.getId()}).getFeatureType();
+        var featureType = me.model.where({id: e.feature.getId()})[0].getFeatureType()[1];
         
 //        me.trigger(featureType + ':click', me.wrapEvent(e));
         me.trigger('shape' + ':click', me.wrapEvent(e));
@@ -391,20 +415,22 @@ define([
     },
 
     zoomIn: function () {
-      console.log('zoomIn');
-      this.map.setZoom(this.map.getZoom() + 1);
+      //console.log('zoomIn');
+      this.mapEngine.map.setZoom(this.mapEngine.map.getZoom() + 1);
     },
 
     zoomOut: function () {
-      console.log('zoomOut');
-      this.map.setZoom(this.map.getZoom() - 1);
+      //console.log('zoomOut');
+      this.mapEngine.map.setZoom(this.mapEngine.map.getZoom() - 1);
     },
     
     setSelectionMode: function () {
+      
+      this._removelistenersHandle();
 
       var me = this;
       
-      me.controls.boxSelector.listenersHandle.click = me.map.data.addListener('click', function(event) {
+      me.controls.listenersHandle.click = me.map.data.addListener('click', function(event) {
         
         var id = event.feature.getId();
         var modelItem = me.model.findWhere({id:id});
@@ -417,7 +443,7 @@ define([
 
       });
       
-      me.controls.boxSelector.listenersHandle.mousedown = google.maps.event.addListener(this.map, 'mousedown', function (e) {
+      me.controls.listenersHandle.mousedown = google.maps.event.addListener(this.map, 'mousedown', function (e) {
         
         var mode = me.model.root().get('mode');
         
@@ -432,7 +458,7 @@ define([
 
       });
 
-      me.controls.boxSelector.listenersHandle.mouseup = google.maps.event.addListener(this.map, 'mouseup', function (e) {
+      me.controls.listenersHandle.mouseup = google.maps.event.addListener(this.map, 'mouseup', function (e) {
         
         var mode = me.model.root().get('mode');
         
@@ -448,26 +474,83 @@ define([
           
           console.log('a');
           
-          me.model.leafs().each(function (m) {
+          me.model.flatten().filter(function (m) {
+            return m.children() == null;
+          }).each(function (m) {
   
             var id = m.get('id');
 
-            var result = me._checkSelectionContainFeature(me.controls.boxSelector.gribBoundingBox, id);
+//            var result = me._checkSelectionContainFeature(me.controls.boxSelector.gribBoundingBox, id);
+//            
+//            // Area contains shape
+//            if (result) {
+//              
+//              m.setSelection( (m.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
+//              
+//              var style = me.toNativeStyle( m.inferStyle('normal') );
+//              var feature = me.map.data.getFeatureById(id);
+//              
+//              me.map.data.overrideStyle(feature, style);
+//            }
+//            
+//            else {
+//              m.setSelection(SelectionStates.NONE);
+//            }
             
-            // Area contains shape
-            if (result) {
-              
-              m.setSelection( (m.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
-              
-              var style = me.toNativeStyle( m.inferStyle('normal') );
-              var feature = me.map.data.getFeatureById(id);
-              
-              me.map.data.overrideStyle(feature, style);
+            
+            
+            
+            if (me.map.data.getFeatureById(id) != undefined) {
+
+              me.map.data.getFeatureById(id).toGeoJson(function(obj){
+
+                var geometry = obj.geometry
+                var result = false;
+
+                if (geometry.type == 'MultiPolygon') {
+
+                  result = _.some(geometry.coordinates, function(value) {
+
+                    return _.some(value, function(value) {
+
+                      return _.some(value, function(value) {
+
+                        var latLng = new google.maps.LatLng(value[1], value[0]);
+
+                        return me.controls.boxSelector.gribBoundingBox.getBounds().contains(latLng);
+
+                      });
+
+                    });
+
+                  });
+
+                }
+                
+                // Area contains shape
+                if (result) {
+
+                  m.setSelection( (m.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
+
+                  var style = me.toNativeStyle( m.inferStyle('normal') );
+                  var feature = me.map.data.getFeatureById(id);
+
+                  me.map.data.overrideStyle(feature, style);
+                }
+
+                else {
+                  m.setSelection(SelectionStates.NONE);
+                }
+
+              });
+
             }
             
-            else {
-              m.setSelection(SelectionStates.NONE);
-            }
+            
+            
+            
+            
+            
               
           });
           
@@ -483,7 +566,7 @@ define([
         }
       });
       
-      me.controls.boxSelector.listenersHandle.mousemove = google.maps.event.addListener(this.map, 'mousemove', function (e) {
+      me.controls.listenersHandle.mousemove = google.maps.event.addListener(this.map, 'mousemove', function (e) {
 
         var mode = me.model.root().get('mode');
         
@@ -491,16 +574,14 @@ define([
           
           if (me.controls.boxSelector.gribBoundingBox !== null) // box exists
           {
-            me.controls.boxSelector.bounds.extend(e.latLng);                
-            me.controls.boxSelector.gribBoundingBox.setBounds(me.controls.boxSelector.bounds); // If this statement is enabled, I lose mouseUp events
+            var newbounds = new google.maps.LatLngBounds(me.controls.boxSelector.mouseDownPos, null);
+            newbounds.extend(e.latLng);
+            me.controls.boxSelector.gribBoundingBox.setBounds(newbounds); // If this statement is enabled, I lose mouseUp events
 
           } else // create bounding box
           {
-            me.controls.boxSelector.bounds = new google.maps.LatLngBounds();
-            me.controls.boxSelector.bounds.extend(e.latLng);
             me.controls.boxSelector.gribBoundingBox = new google.maps.Rectangle({
               map: me.map,
-              bounds: me.controls.boxSelector.bounds,
               fillOpacity: 0.15,
               strokeWeight: 0.9,
               clickable: false
@@ -509,15 +590,17 @@ define([
         }
       });
       
-      console.log('Box mode enable');
+      console.log('Selection mode enable');
       this.updateFeatures();
     },
 
     setZoomBoxMode: function () {
+      
+      this._removelistenersHandle();
 
       var me = this;
       
-      me.controls.zoomBox.listenersHandle.mousedown = google.maps.event.addListener(this.map, 'mousedown', function (e) {
+      me.controls.listenersHandle.mousedown = google.maps.event.addListener(this.map, 'mousedown', function (e) {
         
         var mode = me.model.root().get('mode');
         
@@ -532,7 +615,7 @@ define([
 
       });
 
-      me.controls.zoomBox.listenersHandle.mouseup = google.maps.event.addListener(this.map, 'mouseup', function (e) {
+      me.controls.listenersHandle.mouseup = google.maps.event.addListener(this.map, 'mouseup', function (e) {
         
         var mode = me.model.root().get('mode');
         
@@ -558,7 +641,7 @@ define([
         }
       });
       
-      me.controls.zoomBox.listenersHandle.mousemove = google.maps.event.addListener(this.map, 'mousemove', function (e) {
+      me.controls.listenersHandle.mousemove = google.maps.event.addListener(this.map, 'mousemove', function (e) {
 
         var mode = me.model.root().get('mode');
         
@@ -566,19 +649,18 @@ define([
           
           if (me.controls.zoomBox.gribBoundingBox !== null) // box exists
           {
-            me.controls.zoomBox.bounds.extend(e.latLng);                
-            me.controls.zoomBox.gribBoundingBox.setBounds(me.controls.zoomBox.bounds); // If this statement is enabled, I lose mouseUp events
+            var newbounds = new google.maps.LatLngBounds(me.controls.zoomBox.mouseDownPos, null);
+            newbounds.extend(e.latLng);
+            me.controls.zoomBox.gribBoundingBox.setBounds(newbounds); // If this statement is enabled, I lose mouseUp events
 
           } else // create bounding box
           {
-            me.controls.zoomBox.bounds = new google.maps.LatLngBounds();
-            me.controls.zoomBox.bounds.extend(e.latLng);
             me.controls.zoomBox.gribBoundingBox = new google.maps.Rectangle({
               map: me.map,
-              bounds: me.controls.zoomBox.bounds,
               fillOpacity: 0.15,
               strokeWeight: 0.9,
-              clickable: false
+              clickable: false,
+              zIndex: 999
             });
           }
         }
@@ -590,8 +672,41 @@ define([
     },
     
     setPanningMode: function() {
-      this._removeControlZoomBox();
-      this._removeControlBoxSelector();
+      
+      this._removelistenersHandle();
+
+      var me = this;
+      
+      me.controls.listenersHandle.click = me.map.data.addListener('click', function(event) {
+        
+        //Unselect all features selected
+        var selectedItens = me.model.where({isSelected:true});
+
+        _.each(selectedItens, function(modelItem) {
+
+          modelItem.setSelection( SelectionStates.NONE );
+
+          //var style = me.toNativeStyle( modelItem.inferStyle('normal') );
+
+          //me.map.data.overrideStyle(event.feature, style);
+
+        });
+
+        // Select new item
+        var id = event.feature.getId();
+        var modelItem = me.model.findWhere({id:id});
+        
+        modelItem.setSelection( (modelItem.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
+//        modelItem.setSelection( SelectionStates.ALL );
+              
+        var style = me.toNativeStyle( modelItem.inferStyle('normal') );
+              
+        me.map.data.overrideStyle(event.feature, style);
+        
+        me.updateFeatures();
+        
+      });
+      
       console.log('Selection mode enable');
 
       this.updateFeatures();
@@ -600,10 +715,9 @@ define([
     updateFeatures: function() {
       
       // revertStyle deveria disparar setStyle para todas as features. mas nao esta
-      this.map.data.revertStyle();
+      //this.map.data.revertStyle();
       
       // Codigo temporario
-      
       var me = this;
       
       me.model.flatten().filter(function (m) {
@@ -623,74 +737,6 @@ define([
     },
   
     /*-----------------------------*/
-
-
-    __setShape1: function (multiPolygon, shapeStyle, data) {
-      // Attempt at using GeoJSON as a viewModel
-      var shapes = this.map.data.addGeoJson(multiPolygon);
-      return;
-    },
-
-
-    __setShape: function (feature, shapeStyle, data) {
-      if (!feature) {
-        return;
-      }
-      var myself = this;
-
-      var multiPolygon;
-      switch (feature.geometry.type) {
-        case 'MultiPolygon':
-          multiPolygon = feature.geometry.coordinates;
-          break;
-        case 'Polygon':
-          multiPolygon = [feature.geometry.coordinates];
-          break;
-        case 'LineString':
-          multiPolygon = [[feature.geometry.coordinates]];
-          break;
-        default:
-          return;
-      }
-
-      // It seems that Google Maps does not support multipolygons, so we have to register each polygon instead.
-      var feature = _.map(multiPolygon, function (polygon) {
-        var polygonGM = _.map(polygon, function (ring) {
-          return _.map(ring, function (lonlat) {
-            return new google.maps.LatLng(lonlat[1], lonlat[0]);
-          });
-        });
-
-        var shape = new google.maps.Polygon(_.extend({
-          paths: polygonGM
-        }, myself.toNativeStyle(shapeStyle)));
-        shape.setMap(myself.map);
-        return shape;
-      });
-
-
-      // We'll have to use a trick to emulate the callbacks on multipolygons...
-      _.each(feature, function (featurePolygon) {
-        // We'll have to use a trick to emulate the multipolygons...
-        google.maps.event.addListener(featurePolygon, 'click', function (event) {
-          myself.unselectPrevShape(data.key, feature, shapeStyle);
-          addEventToFeature('shape:click', event, feature, shapeStyle, data);
-        });
-        google.maps.event.addListener(featurePolygon, 'mousemove', function (event) {
-          addEventToFeature('shape:mouseover', event, feature, shapeStyle, data);
-        });
-        google.maps.event.addListener(featurePolygon, 'mouseout', function (event) {
-          addEventToFeature('shape:mouseout', event, feature, shapeStyle, data);
-        });
-      });
-
-      function addEventToFeature(eventName, event, feature, shapeStyle, data) {
-        _.each(feature, function (f) {
-          myself.trigger(eventName, myself.wrapEvent(event, f, 'shape', shapeStyle, data));
-        });
-      }
-
-    },
 
     unselectPrevShape: function (key, shapes, shapeStyle) {
       var myself = this;
@@ -766,54 +812,6 @@ define([
       }
        
     },      
-
-    __renderMap: function (target, tilesets) {
-      this.tilesets = tilesets;
-      Logger.log('Requested tilesets:' + JSON.stringify(tilesets), 'debug');
-
-      var myOptions = {
-        mapTypeId: google.maps.MapTypeId.ROADMAP
-      };
-
-      //Prepare tilesets as overlays
-      var layers = [],
-        layerIds = [],
-        layerOptions = [];
-      for (var k = 0; k < this.tilesets.length; k++) {
-        var thisTileset = this.tilesets[k].slice(0);
-
-        layerIds.push(thisTileset);
-        layerOptions.push(_.extend(myOptions, {
-          mapTypeId: thisTileset
-        }));
-
-        if (this.tileServices[thisTileset]) {
-          layers.push(this.tileLayer(thisTileset));
-        } else {
-          layers.push('');
-        }
-
-      } //for tilesets
-
-      // Add base map
-      this.map = new google.maps.Map(target, {
-        mapTypeControlOptions: {
-          mapTypeIds: layerIds.concat(_.values(google.maps.MapTypeId))
-        }
-      });
-        
-      for (k = 0; k < layers.length; k++) {
-        if (!_.isEmpty(layers[k])) {
-          this.map.mapTypes.set(layerIds[k], layers[k]);
-          //this.map.overlayMapTypes.push(layers[k]);
-          this.map.setMapTypeId(layerIds[k]);
-          this.map.setOptions(layerOptions[k]);
-        }
-      }
-
-      registerViewportEvents.call(this);
-    },
-
 
     updateViewport: function (centerLongitude, centerLatitude, zoomLevel) {
       if (!zoomLevel) zoomLevel = 2;
