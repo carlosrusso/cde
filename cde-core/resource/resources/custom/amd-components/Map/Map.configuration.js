@@ -1,24 +1,7 @@
-(function (root, factory) {
-  if (typeof Dashboards === 'undefined') {
-    define([
-      'cdf/lib/jquery',
-      'amd!cdf/lib/underscore'
-    ], factory);
-  } else {
-    namespace(root, 'CDFComponents.NewMap.IConfiguration', factory(
-      root.$,
-      root._
-    ));
-  }
-  function namespace(root, path, f) {
-    var levels = path.split('.');
-    var location = levels.slice(0, levels.length - 1).reduce(function (base, level) {
-      base[level] = base[level] || {};
-      return base[level];
-    }, root);
-    location[levels[levels.length - 1]] = f;
-  }
-})(this, function ($, _) {
+define([
+  'cdf/lib/jquery',
+  'amd!cdf/lib/underscore'
+], function ($, _) {
 
   return {
     getConfiguration: getConfiguration

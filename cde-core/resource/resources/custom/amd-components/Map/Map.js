@@ -76,23 +76,23 @@ define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
   'cdf/components/UnmanagedComponent',
-  './Map/ILifecycle',
-  './Map/ISelector',
-  './Map/IMapModel',
-  './Map/IConfiguration',
+  './Map.lifecycle',
+  './Map.selector',
+  './Map.model',
+  './Map.configuration',
 
-  './Map/IColorMap',
-  './Map/ControlPanel/ControlPanel',
-  './Map/tileServices',
-  './Map/engines/openlayers2/mapengine-openlayers',
-  './Map/engines/google/mapengine-google',
-  './Map/addIns/mapAddIns',
-  'css!./NewMapComponent'
+  './Map.colorMap',
+  './ControlPanel/ControlPanel',
+  './Map.tileServices',
+  './engines/openlayers2/MapEngineOpenLayers',
+  './engines/google/MapEngineGoogle',
+  './addIns/mapAddIns',
+  'css!./Map'
 ], function ($, _, UnmanagedComponent,
              ILifecycle,
              ISelector, IMapModel, IConfiguration, IColorMap,
              ControlPanel,
-             _tileServices,
+             tileServices,
              OpenLayersEngine, GoogleMapEngine) {
 
 
@@ -102,6 +102,7 @@ define([
     .extend(IMapModel)
     .extend(IConfiguration)
     .extend(IColorMap)
+    .extend(tileServices)
     .extend({
       mapEngine: undefined, // points to one instance of a MapEngine object
       locationResolver: undefined, // addIn used to process location
@@ -113,15 +114,6 @@ define([
       //shapeSource: '',
       //tilesets: ['mapquest'],
       //colormap: [[0, 102, 0, 255], [255, 255 ,0,255], [255, 0,0, 255]], //RGBA
-      tileServices: _tileServices,
-      otherTileServices: [
-        // These are tilesets using special code
-        //'google'
-      ],
-      tileServicesOptions: {
-        // WIP: interface for overriding defaults
-        'apple': {minZoom: 3, maxZoom: 14}
-      },
       // shapeMouseOver : function(event){
       //     Logger.log('Currently at lat=' + event.latitude + ', lng=' + event.longitude + ': Beat '+ event.data.key + ':' + event.data.value + ' crimes');
       //     return {

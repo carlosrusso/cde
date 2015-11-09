@@ -18,7 +18,7 @@
 define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
-  '../mapengine',
+  '../MapEngine',
   'cdf/lib/OpenLayers',
   '../../model/SelectionStates',
   'cdf/Logger',

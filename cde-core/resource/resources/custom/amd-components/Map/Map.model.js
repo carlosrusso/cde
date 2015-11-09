@@ -2,10 +2,10 @@ define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
   './model/MapModel',
-  './getMapping',
+  './_getMapping',
   './FeatureStore/resolveShapes',
   './FeatureStore/resolveMarkers',
-  './Styles'
+  './Map.featureStyles'
 ], function ($, _,
              MapModel,
              getMapping,

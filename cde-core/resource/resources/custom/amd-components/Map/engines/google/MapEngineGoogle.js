@@ -14,7 +14,7 @@
 define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
-  '../mapengine',
+  '../MapEngine',
   './MapComponentAsyncLoader',
   '../../model/SelectionStates',
   'css!./style-google'
