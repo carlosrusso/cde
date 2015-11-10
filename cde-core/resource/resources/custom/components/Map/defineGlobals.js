@@ -14,7 +14,7 @@ define('cdf/AddIn', function () {
 define('cdf/components/BaseComponent', function () {
   return BaseComponent;
 });
-define('cdf/UnmanagedComponent', function () {
+define('cdf/components/UnmanagedComponent', function () {
   return UnmanagedComponent;
 });
 define('cdf/Dashboard.Clean', function () {
@@ -29,4 +29,14 @@ define('cdf/Logger', function () {
     error: Dashboards.error,
     warn: Dashboards.warn
   };
+});
+
+define('cdf/lib/OpenLayers', function () {
+  return OpenLayers;
+});
+define('cdf/lib/mustache', function () {
+  return Mustache;
+});
+define('text!./ControlPanel.html', function () {
+  return '<div class="map-control-panel"/>';
 });

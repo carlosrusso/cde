@@ -1,1 +1,4 @@
-var NewMapComponent = require('cde/components/Map/Map', function(){});
+
+require(['cde/components/Map/Map'], function(Map){
+  window.NewMapComponent = Map;
+});

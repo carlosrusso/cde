@@ -7,7 +7,7 @@ define("cde/components/Map/Map.lifecycle", [], function() {
             var query = this.queryState = this.query = this.dashboard.getQuery(this.queryDefinition);
             query.setAjaxOptions({
                 async: !0
-            }), query.fetchData(this.parameters, this.getSuccessHandler(this.onDataReady), this.getErrorHandler());
+            }), query.fetchData(this.parameters, this.getSuccessHandler(_.bind(this.onDataReady, this)), this.getErrorHandler());
         },
         _concludeUpdate: function() {
             this.postExec(), this.maybeToggleBlock(!1);
@@ -1966,6 +1966,7 @@ define("cde/components/Map/engines/google/MapEngineGoogle", [ "cdf/lib/jquery", 
             return $.ajax({
                 dataType: "json",
                 url: opt.url,
+                method: 'GET',
                 data: params,
                 success: onSuccess,
                 error: onError
@@ -2020,6 +2021,7 @@ define("cde/components/Map/engines/google/MapEngineGoogle", [ "cdf/lib/jquery", 
             return $.ajax({
                 dataType: "json",
                 url: opt.url,
+                method: 'GET',
                 data: $.extend({}, opt.serviceParams, params),
                 success: onSuccess,
                 error: onError
@@ -2041,7 +2043,7 @@ define("cde/components/Map/engines/google/MapEngineGoogle", [ "cdf/lib/jquery", 
 }), define("cdf/components/CggComponent.ext", [], function() {
     var CggComponentExt = {
         getCggDrawUrl: function() {
-            return CONTEXT_PATH + "plugin/cgg/api/services/draw";
+            return 'CONTEXT_PATH' + "plugin/cgg/api/services/draw";
         }
     };
     return CggComponentExt;
@@ -2067,7 +2069,7 @@ define("cde/components/Map/engines/google/MapEngineGoogle", [ "cdf/lib/jquery", 
 }), define("cde/components/Map/NewMapComponent.ext", [], function() {
     var NewMapComponentExt = {
         getMarkerImgPath: function() {
-            return CONTEXT_PATH + "api/repos/pentaho-cdf-dd/resources/custom/amd-components/Map/images/";
+            return 'CONTEXT_PATH' + "api/repos/pentaho-cdf-dd/resources/custom/amd-components/Map/images/";
         }
     };
     return NewMapComponentExt;
@@ -2114,7 +2116,7 @@ define("cde/components/Map/engines/google/MapEngineGoogle", [ "cdf/lib/jquery", 
             var deferred = $.Deferred(), url = opt.url || st._shapeSource;
             return url ? $.ajax(url, {
                 async: !0,
-                type: "GET",
+                method: "GET",
                 dataType: "json",
                 success: function(latlonMap) {
                     var map = _.chain(latlonMap).map(function(multiPolygonLatLon, key) {
