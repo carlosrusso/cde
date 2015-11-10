@@ -68,7 +68,8 @@ define([
       return this.model.findWhere({id: seriesId});
     },
 
-    visualRoles: {},
+    visualRoles: {
+    },
 
     scales: {
       fill: 'default', //named colormap, or a colormap definition
@@ -195,7 +196,7 @@ define([
     },
 
     getStyleMap: function (styleName) {
-      var localStyleMap = this.styleMap || {};
+      var localStyleMap = _.result(this.styleMap) || {};
       var styleMap = $.extend(true, {}, Styles.getStyleMap(styleName), localStyleMap.global, localStyleMap[styleName]);
       // TODO: should we just drop this?
       switch (styleName) {

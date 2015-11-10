@@ -3,37 +3,37 @@
 define([
   'amd!cdf/lib/underscore',
   'amd!cdf/lib/backbone',
-  'cdf/components/BaseComponent'], // TODO: Why BaseComponent, and not simply Base?
-  function( _, Backbone, BaseComponent ) {
+  'cdf/lib/Base'
+], function (_, Backbone, Base) {
 
-    var rest = _.rest;
+  var rest = _.rest;
 
-    function extendClass(TargetClass) {
-      return BaseComponent.extend.apply(TargetClass, rest(arguments));
-    }
+  function extendClass(TargetClass) {
+    return Base.extend.apply(TargetClass, rest(arguments));
+  }
 
-    function addSelfExtend(TargetClass) {
-      return extendClass(TargetClass, {}, {
-        extend: BaseComponent.extend
-      });
-    }
+  function addSelfExtend(TargetClass) {
+    return extendClass(TargetClass, {}, {
+      extend: Base.extend
+    });
+  }
 
-    function addEvents(TargetClass) {
-      return extendClass(TargetClass, Backbone.Events);
-    }
+  function addEvents(TargetClass) {
+    return extendClass(TargetClass, Backbone.Events);
+  }
 
-    function convertClass(TargetClass) {
-      return extendClass(addEvents(addSelfExtend(TargetClass)), arguments[1], arguments[2]);
-    }
+  function convertClass(TargetClass) {
+    return extendClass(addEvents(addSelfExtend(TargetClass)), arguments[1], arguments[2]);
+  }
 
-    // BaseEvents: returns Base.js modification that includes Backbone.Events.
-    //   Also has several static helpers to augment constructors with .extend
-    //   and events functionality.
-    var BaseEvents = convertClass( BaseComponent );
+  // BaseEvents: returns Base.js modification that includes Backbone.Events.
+  //   Also has several static helpers to augment constructors with .extend
+  //   and events functionality.
+  var BaseEvents = convertClass(Base);
 
-    BaseEvents.extendClass = extendClass;
-    BaseEvents.convertClass = convertClass;
-    BaseEvents.extendWithEvents = convertClass;
+  BaseEvents.extendClass = extendClass;
+  BaseEvents.convertClass = convertClass;
+  BaseEvents.extendWithEvents = convertClass;
 
-    return BaseEvents;
+  return BaseEvents;
 });

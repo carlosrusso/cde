@@ -168,7 +168,11 @@ define([
       },
 
       _initMapEngine: function () {
-        var options = this.configuration.addIns.MapEngine.options;
+        var options = $.extend(true, {},
+          this.configuration.addIns.MapEngine.options, {
+            options: this.configuration
+          }
+        );
 
         if (this.configuration.addIns.MapEngine.name == 'google') {
           this.mapEngine = new GoogleMapEngine(options);
@@ -213,11 +217,10 @@ define([
       },
 
       render: function () {
-        this._initControlPanel();
         this.mapEngine.render(this.model);
         var centerLatitude = this.configuration.viewport.center.latitude;
         var centerLongitude = this.configuration.viewport.center.longitude;
-        var defaultZoomLevel = this.configuration.viewport.zoomLevel;
+        var defaultZoomLevel = this.configuration.viewport.default;
         this.mapEngine.updateViewport(centerLongitude, centerLatitude, defaultZoomLevel);
       },
 
@@ -226,7 +229,8 @@ define([
         var component = this;
         var events = [
           'marker:click', 'marker:mouseover', 'marker:mouseout',
-          'shape:click', 'shape:mouseover', 'shape:mouseout'
+          'shape:click', 'shape:mouseover', 'shape:mouseout',
+          'map:zoom', 'map:center'
         ];
         _.each(events, function (event) {
           component.listenTo(engine, event, function () {

@@ -37,6 +37,10 @@ define([
       MapEngine: {
         name: this.mapEngineType,
         options: {
+          rawOptions: {
+            map: {
+            }
+          },
           tileServices: this.tileServices,
           tileServicesOptions: this.tileServicesOptions,
           tilesets: (_.isString(this.tilesets)) ? [this.tilesets] : this.tilesets,
@@ -50,14 +54,19 @@ define([
         latitude: parseFloat(this.centerLatitude),
         longitude: parseFloat(this.centerLongitude)
       },
-      zoomLevel: this.defaultZoomLevel
+      zoomLevel: {
+        min: 0,
+        max: Infinity,
+        default: this.defaultZoomLevel
+      }
+
     };
 
     return $.extend(true, {}, {
       addIns: addIns,
       styleMap: this.styleMap,
       viewport: viewport
-    });
+    }, _.result(this.options));
   }
 
 });
