@@ -194,9 +194,58 @@ define([
       
       // Set initial styleMap for the feature 
       this.map.data.setStyle(function(feature) {
-        
-        //return me.toNativeStyle( me.model.findWhere({id: feature.getId()}).inferStyle('normal') );
-        return me.toNativeStyle( me.model.findWhere({id: feature.getId()}).inferStyle() );
+
+        var modelItem = me.model.findWhere({id: feature.getId()});
+        var style = me.toNativeStyle( modelItem.inferStyle() );
+
+        if (style.path == 'circle') {
+
+          $.extend(style, {path : google.maps.SymbolPath.CIRCLE} );
+
+          //style.path = style.path.replace(/^circle$/, google.maps.SymbolPath.CIRCLE);
+
+
+        }
+
+        if ( modelItem.getFeatureType() === 'marker' ) {
+
+          style = {icon: style};
+
+        }
+
+        //return {
+        //  icon: {
+        //    path: google.maps.SymbolPath.CIRCLE,
+        //    scale: 5,
+        //    fillColor: '#f00',
+        //    fillOpacity: 0.5,
+        //    strokeWeight: 0
+        //  }
+        //};
+
+        //TEMP
+        //var x = {
+        //  path: google.maps.SymbolPath.CIRCLE,
+        //  scale: 5,
+        //  fillColor: '#f00',
+        //  fillOpacity: 0.5,
+        //  strokeWeight: 0
+        //};
+
+        //var styleX = {
+        //  icon: x
+        //};
+        //
+        //return styleX;
+
+//        style.icon.scale = 10;
+//        style.icon.label = undefined;
+//        style.icon.strokeColor = undefined;
+//        style.icon.radius = undefined;
+//        style.icon.labelAlign = undefined;
+//        style.icon.labelYOffset = undefined;
+
+        return style;
 
       });
       
@@ -248,12 +297,14 @@ define([
         'stroke': 'strokeColor',
         'stroke-opacity': 'strokeOpacity',
         'stroke-width': 'strokeWeight',
+        'r': 'scale',
+        'graphicName': 'path',
         //Backwards compatibility
         'fillColor': 'fillColor',
         'fillOpacity': 'fillOpacity',
         'strokeColor': 'strokeColor',
         'strokeOpacity': 'strokeOpacity',
-        'strokeWeight': 'strokeWeight',
+        'strokeWidth': 'strokeWeight',
         'zIndex': 'zIndex'
       };
       var validStyle = {};
@@ -497,6 +548,7 @@ define([
                 var geometry = obj.geometry
                 var result = false;
 
+                // For shape
                 if (geometry.type == 'MultiPolygon') {
 
                   result = _.some(geometry.coordinates, function(value) {
@@ -516,6 +568,15 @@ define([
                   });
 
                 }
+
+                // For marker
+                else if (geometry.type == 'Point') {
+
+                  var latLng = new google.maps.LatLng(geometry.coordinates[1], geometry.coordinates[0]);
+
+                  result = me.controls.boxSelector.gribBoundingBox.getBounds().contains(latLng);
+
+                }
                 
                 // Area contains shape
                 if (result) {
@@ -533,12 +594,6 @@ define([
 
             }
             
-            
-            
-            
-            
-            
-              
           });
           
           //me.map.fitBounds( boundsSelectionArea );
