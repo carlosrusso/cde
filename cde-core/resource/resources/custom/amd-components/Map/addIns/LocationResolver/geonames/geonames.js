@@ -11,30 +11,11 @@
  * the license for the specific language governing your rights and limitations.
  */
 
-(function (root, factory) {
-  if (typeof Dashboards === 'undefined') {
-    define([
-      'cdf/AddIn',
-      'cdf/Dashboard.Clean',
-      'cdf/lib/jquery'
-    ], factory);
-  } else {
-    root.Dashboards.registerGlobalAddIn = root.Dashboards.registerAddIn;
-    namespace(root, 'CDFComponents.NewMap.addIns.LocationResolver.geonames', factory(
-      root.AddIn,
-      root.Dashboards,
-      root.$
-    ));
-  }
-  function namespace(root, path, f) {
-    var levels = path.split('.');
-    var location = levels.slice(0, levels.length - 1).reduce(function (base, level) {
-      base[level] = base[level] || {};
-      return base[level];
-    }, root);
-    location[levels[levels.length - 1]] = f;
-  }
-})(this, function (AddIn, Dashboard, $) {
+define([
+  'cdf/AddIn',
+  'cdf/Dashboard.Clean',
+  'cdf/lib/jquery'
+], function (AddIn, Dashboard, $) {
   
   var geonames = new AddIn({
     name: "geonames",

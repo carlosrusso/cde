@@ -186,7 +186,8 @@ define([
       var me = this;
 
       var mapOptions = {
-        mapTypeId: google.maps.MapTypeId.ROADMAP
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        disableDefaultUI: true
       };
 
       // Add base map
@@ -194,9 +195,25 @@ define([
       
       // Set initial styleMap for the feature 
       this.map.data.setStyle(function(feature) {
-        
-        //return me.toNativeStyle( me.model.findWhere({id: feature.getId()}).inferStyle('normal') );
-        return me.toNativeStyle( me.model.findWhere({id: feature.getId()}).inferStyle() );
+
+        var modelItem = me.model.findWhere({id: feature.getId()});
+        var style = me.toNativeStyle( modelItem.inferStyle() );
+
+        //if (style.path == 'circle') {
+        //
+        //  $.extend(style, {path : google.maps.SymbolPath.CIRCLE} );
+        //
+        //}
+
+        if ( modelItem.getFeatureType() === 'marker' ) {
+
+          if (!style.icon) {
+            style = {icon: style};
+          }
+
+        }
+
+        return style;
 
       });
       
@@ -216,9 +233,7 @@ define([
       var data = {
         rawData: row,
         key: row && row[0]
-        //value: row[idx.value],
       };
-//      var layer = this.layers[modelItem.getFeatureType()[1]];
       var featureType = modelItem.getFeatureType();
       var geoJSON = modelItem.get('geoJSON');
       var me = this;
@@ -230,7 +245,8 @@ define([
         //set id for the feature
         $.extend(true, feature, {
           properties: {
-            id: modelItem.get('id')
+            id: modelItem.get('id'),
+            model: modelItem
           }
         });
 
@@ -248,12 +264,14 @@ define([
         'stroke': 'strokeColor',
         'stroke-opacity': 'strokeOpacity',
         'stroke-width': 'strokeWeight',
+        'r': 'scale',
+        //'graphicName': 'path',
         //Backwards compatibility
         'fillColor': 'fillColor',
         'fillOpacity': 'fillOpacity',
         'strokeColor': 'strokeColor',
         'strokeOpacity': 'strokeOpacity',
-        'strokeWeight': 'strokeWeight',
+        'strokeWidth': 'strokeWeight',
         'zIndex': 'zIndex'
       };
       var validStyle = {};
@@ -266,6 +284,19 @@ define([
             case 'visible':
               validStyle['display'] = value ? true : 'none';
               break;
+            case 'externalGraphic':
+              validStyle['icon'] = value;
+              validStyle['size'] = new google.maps.Size(validStyle['graphicWidth'], validStyle['graphicHeight']);
+              break;
+            case 'graphicName':
+             var _gn;
+
+             if (value == 'circle') _gn = google.maps.SymbolPath.CIRCLE;
+             else _gn = value;
+
+             validStyle['path'] = _gn;
+
+             break;
             default:
               // be permissive about the validation
               validStyle[key] = value;
@@ -428,12 +459,12 @@ define([
 
     zoomIn: function () {
       //console.log('zoomIn');
-      this.mapEngine.map.setZoom(this.mapEngine.map.getZoom() + 1);
+      this.map.setZoom(this.map.getZoom() + 1);
     },
 
     zoomOut: function () {
       //console.log('zoomOut');
-      this.mapEngine.map.setZoom(this.mapEngine.map.getZoom() - 1);
+      this.map.setZoom(this.map.getZoom() - 1);
     },
     
     setSelectionMode: function () {
@@ -497,6 +528,7 @@ define([
                 var geometry = obj.geometry
                 var result = false;
 
+                // For shape
                 if (geometry.type == 'MultiPolygon') {
 
                   result = _.some(geometry.coordinates, function(value) {
@@ -516,6 +548,15 @@ define([
                   });
 
                 }
+
+                // For marker
+                else if (geometry.type == 'Point') {
+
+                  var latLng = new google.maps.LatLng(geometry.coordinates[1], geometry.coordinates[0]);
+
+                  result = me.controls.boxSelector.gribBoundingBox.getBounds().contains(latLng);
+
+                }
                 
                 // Area contains shape
                 if (result) {
@@ -533,12 +574,6 @@ define([
 
             }
             
-            
-            
-            
-            
-            
-              
           });
           
           //me.map.fitBounds( boundsSelectionArea );
