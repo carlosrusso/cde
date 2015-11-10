@@ -82,6 +82,7 @@ define([
       };
       return $.ajax({
         dataType: "json",
+        method: 'GET',
         url: opt.url,
         data: $.extend({}, opt.serviceParams, params),
         success: onSuccess,

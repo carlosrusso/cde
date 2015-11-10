@@ -90,6 +90,7 @@
       return $.ajax({
         dataType: "json",
         url: opt.url,
+        method: 'GET',
         data: params,
         success: onSuccess,
         error: onError

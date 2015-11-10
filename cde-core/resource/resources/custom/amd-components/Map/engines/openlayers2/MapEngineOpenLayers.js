@@ -74,7 +74,10 @@ define([
       return validStyle;
     },
 
-    wrapEvent: function (event, featureType) {
+    wrapEvent: function (event) {
+      var feature = event.feature;
+      var modelItem = event.feature.attributes.model;
+
       var lastXy = this.controls.mousePosition.lastXy; // || {x: undefined, y: undefined};
       var coords;
       if (lastXy) {
@@ -84,20 +87,16 @@ define([
       } else {
         coords = {lat: undefined, lon: undefined};
       }
-      var feature = event.feature; //.layer.getFeatureById(event.feature.id);
-      var myself = this;
-      return {
-        id: event.feature.attributes.model.get('id'),
+
+      var me = this;
+      return $.extend(this._wrapEvent(modelItem), {
+        mapEngineType: 'openlayers2',
         latitude: coords.lat,
         longitude: coords.lon,
-        data: event.feature.attributes.model.get('data'), //TODO review this
         feature: feature, // can refer to either the shape or the marker
-        featureType: featureType,
-        style: event.feature.attributes.style, // currently only shape styles //TODO review this
-        mapEngineType: 'openlayers2',
         draw: function (style) {
           // currently only makes sense to be called on shape callbacks
-          var validStyle = myself.toNativeStyle(style);
+          var validStyle = me.toNativeStyle(style);
           event.feature.layer.drawFeature(feature, validStyle);
         },
         // TODO: BEGIN code that must die
@@ -107,12 +106,9 @@ define([
         getSelectedStyle: function () {
           return event.feature.attributes.clickSelStyle;
         },
-        isSelected: function () {
-          return event.feature == event.feature.layer.selectedFeatures[0];
-        },
-        // END code that must die
+        // END code that might need to die
         raw: event
-      };
+      });
     },
 
 
@@ -120,12 +116,6 @@ define([
       if (!modelItem) {
         return;
       }
-      var row = modelItem.get('rawData');
-      var data = {
-        rawData: row,
-        key: row && row[0]
-        //value: row[idx.value],
-      };
       var layer = this.layers[modelItem.root().children().first().get('id')];
       var geoJSON = modelItem.get('geoJSON');
       var me = this;
@@ -138,8 +128,7 @@ define([
         $.extend(true, f, {
           attributes: {
             id: modelItem.get('id'),
-            model: modelItem,
-            data: data
+            model: modelItem
           },
           style: me.toNativeStyle(style)
         });
@@ -228,10 +217,6 @@ define([
       var projectionWGS84 = new OpenLayers.Projection('EPSG:4326');
 
       var mapOptions = {
-        //maxExtent: new OpenLayers.Bounds(-20037508,-20037508,20037508,20037508),
-        //numZoomLevels: 18,
-        //maxResolution: 156543,
-        //units: 'm',
         zoomDuration: 10, // approximately match Google's zoom animation
         displayProjection: projectionWGS84,
         projection: projectionMap,
@@ -253,6 +238,14 @@ define([
         mapOptions.tileManager = new OpenLayers.TileManager();
       }
       this.map = new OpenLayers.Map(target, mapOptions);
+
+      var me = this;
+      this.map.isValidZoomLevel = function(z){
+        var minZoom = _.isFinite(me.options.viewport.zoomLevel.min) ? me.options.viewport.zoomLevel.min : 0;
+        var maxZoom = _.isFinite(me.options.viewport.zoomLevel.max) ? me.options.viewport.zoomLevel.max : this.getNumZoomLevels();
+        return (z != null && z >= minZoom && z <= maxZoom );
+      };
+
 
 
       this.addLayers();
@@ -312,51 +305,44 @@ define([
     },
 
     setPanningMode: function () {
-      console.log('Panning mode enable');
       this.controls.clickCtrl.activate();
       this.controls.zoomBox.deactivate();
       this.controls.boxSelector.deactivate();
     },
 
     setZoomBoxMode: function () {
-      console.log('Zoom mode enable');
       this.controls.clickCtrl.deactivate();
       this.controls.zoomBox.activate();
       this.controls.boxSelector.deactivate();
     },
 
     setSelectionMode: function () {
-      console.log('Selection mode enable');
       this.controls.clickCtrl.deactivate();
       this.controls.boxSelector.activate();
       this.controls.zoomBox.deactivate();
     },
 
     zoomIn: function () {
-      console.log('zoomIn');
       this.map.zoomIn();
     },
 
     zoomOut: function () {
-      console.log('zoomIn');
       this.map.zoomOut();
     },
 
     updateViewport: function (centerLongitude, centerLatitude, zoomLevel) {
-
-      var bounds = new OpenLayers.Bounds();
-      var markersBounds = this.layers.markers.getDataExtent();
-      var shapesBounds = this.layers.shapes.getDataExtent();
-      if (markersBounds || shapesBounds) {
-        bounds.extend(markersBounds);
-        bounds.extend(shapesBounds);
-      } else {
-        bounds = null;
-      }
-
       if (_.isFinite(zoomLevel)) {
         this.map.zoomTo(zoomLevel);
       } else {
+        var bounds = new OpenLayers.Bounds();
+        var markersBounds = this.layers.markers.getDataExtent();
+        var shapesBounds = this.layers.shapes.getDataExtent();
+        if (markersBounds || shapesBounds) {
+          bounds.extend(markersBounds);
+          bounds.extend(shapesBounds);
+        } else {
+          bounds = null;
+        }
         if (bounds) {
           this.map.zoomToExtent(bounds);
         } else {
@@ -373,7 +359,6 @@ define([
         centerPoint = (new OpenLayers.LonLat(-10, 20)).transform(projectionWGS84, this.map.getProjectionObject());
         this.map.setCenter(centerPoint);
       }
-
     },
 
     addControls: function () {
@@ -396,10 +381,11 @@ define([
         toggle: true,
         multiple: true,
         hover: false,
+        highlightOnly: true,
         box: true
       });
       this.map.addControl(this.controls.boxSelector);
-
+      //TODO: apply modelItem.setHover(true) on all items inside the box
     },
 
     _addControlZoomBox: function () {
@@ -513,7 +499,7 @@ define([
           var actionMap = {
             'pan': 'normal',
             'zoombox': 'normal',
-            'selection': 'hover'
+            'selection': 'normal'
           };
           var action = actionMap[modelItem.root().get('mode')];
           modelItem.setHover(action === 'hover');

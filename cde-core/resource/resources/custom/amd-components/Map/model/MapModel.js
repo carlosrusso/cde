@@ -7,7 +7,7 @@ define([
 
   var MapModel = SelectionTree.extend({
     defaults: {
-      id: void 0,
+      id: undefined,
       label: "",
       isSelected: false,
       isHighlighted: false,
@@ -17,11 +17,11 @@ define([
       rawData: null,
       styleMap: {
         unselected: {
-          'default': {},
+          normal: {},
           hover: {}
         },
         selected: {
-          'default': {},
+          normal: {},
           hover: {}
         }
       }

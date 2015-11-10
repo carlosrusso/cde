@@ -1,4 +1,6 @@
-define([], function () {
+define([
+  'amd!cdf/lib/underscore'
+], function (_) {
 
   return {
     maybeToggleBlock: function (block) {
@@ -12,7 +14,7 @@ define([], function () {
       query.setAjaxOptions({async: true});
       query.fetchData(
         this.parameters,
-        this.getSuccessHandler(this.onDataReady),
+        this.getSuccessHandler(_.bind(this.onDataReady, this)),
         this.getErrorHandler());
     },
 
