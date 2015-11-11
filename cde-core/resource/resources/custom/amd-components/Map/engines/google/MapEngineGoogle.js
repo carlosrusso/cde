@@ -344,6 +344,7 @@ define([
       //this._addControlClick();
       this._addControlZoomBox();
       this._addControlBoxSelector();
+      this._addLimitZoomLimits();
       
     },
     
@@ -482,6 +483,22 @@ define([
         
       });
       
+    },
+
+    _addLimitZoomLimits: function() {
+
+      var me = this;
+
+      var minZoom = _.isFinite(me.options.viewport.zoomLevel.min) ? me.options.viewport.zoomLevel.min : 0;
+      var maxZoom = _.isFinite(me.options.viewport.zoomLevel.max) ? me.options.viewport.zoomLevel.max : null;
+
+      // Limit the zoom level
+      google.maps.event.addListener(me.map, 'zoom_changed', function () {
+
+        if (me.map.getZoom() < minZoom) me.map.setZoom(minZoom);
+        else if ( (me.map.getZoom() > maxZoom) && (!_.isNull()) ) me.map.setZoom(maxZoom);  // if is NULL, max is the limit of the map
+
+      });
     },
 
     zoomIn: function () {
