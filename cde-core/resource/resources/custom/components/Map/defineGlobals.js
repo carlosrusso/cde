@@ -1,22 +1,23 @@
-define('cdf/lib/jquery', function () {
-  return $;
-});
-define('amd!cdf/lib/underscore', function () {
-  return _;
-});
-define('amd!cdf/lib/backbone', function () {
-  return Backbone;
-});
-define('cdf/AddIn', function () {
-  return AddIn;
-});
+var myglobals = {
+  'cdf/lib/jquery': $,
+  'amd!cdf/lib/underscore': _,
+  'amd!cdf/lib/backbone': Backbone,
+  'cdf/AddIn': AddIn,
+  'cdf/lib/Base': Base,
+  'cdf/components/UnmanagedComponent': UnmanagedComponent,
+  'cdf/lib/OpenLayers':OpenLayers,
+  'cdf/lib/mustache': Mustache,
+  'css!./Map': ''
+};
 
-define('cdf/components/BaseComponent', function () {
-  return BaseComponent;
-});
-define('cdf/components/UnmanagedComponent', function () {
-  return UnmanagedComponent;
-});
+
+for (var p in myglobals){
+  define(p, function(){
+    return myglobals[p];
+  });
+}
+var CONTEXT_PATH = '';
+
 define('cdf/Dashboard.Clean', function () {
   Dashboards.registerGlobalAddIn = Dashboards.registerGlobalAddIn || Dashboards.registerAddIn;
   return Dashboards;
@@ -31,12 +32,6 @@ define('cdf/Logger', function () {
   };
 });
 
-define('cdf/lib/OpenLayers', function () {
-  return OpenLayers;
-});
-define('cdf/lib/mustache', function () {
-  return Mustache;
-});
 define('text!./ControlPanel.html', function () {
   return '<div class="map-control-panel"/>';
 });
