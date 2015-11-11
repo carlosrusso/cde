@@ -33,7 +33,7 @@ define([
           normal: {
             r: 10,
             graphicName: 'circle',
-            label: 'Normal',
+            //label: 'Normal',
             labelAlign: 'cm',
             labelYOffset: -20,
             fill: 'red',
@@ -99,37 +99,21 @@ define([
     }
   };
 
-  var emptyStyleMap = {
-    pan: {
-      unselected: {
-        normal: {},
-        hover: {}
-      },
-      selected: {
-        normal: {},
-        hover: {}
-      }
+  var emptyStyle = {
+    unselected: {
+      normal: {},
+      hover: {}
     },
-    zoombox: {
-      unselected: {
-        normal: {},
-        hover: {}
-      },
-      selected: {
-        normal: {},
-        hover: {}
-      }
-    },
-    selection: {
-      unselected: {
-        normal: {},
-        hover: {}
-      },
-      selected: {
-        normal: {},
-        hover: {}
-      }
+    selected: {
+      normal: {},
+      hover: {}
     }
+  };
+
+  var emptyStyleMap = {
+    pan: $.extend({}, emptyStyle),
+    zoombox: $.extend({}, emptyStyle),
+    selection: $.extend({}, emptyStyle)
   };
 
   return {

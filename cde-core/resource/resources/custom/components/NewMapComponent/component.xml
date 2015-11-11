@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <DesignerComponent>
   <Header>
-    <Name>NewMapComponent</Name>
-    <IName>NewMapComponent</IName>
-    <Description>Map Component</Description>
+    <Name>NewMapComponentLegacy</Name>
+    <IName>NewMapComponentLegacy</IName>
+    <Description>Map Component Legacy</Description>
     <Category>CUSTOMCOMPONENTS</Category>
     <CatDescription>Custom</CatDescription>
     <Type>PalleteEntry</Type>

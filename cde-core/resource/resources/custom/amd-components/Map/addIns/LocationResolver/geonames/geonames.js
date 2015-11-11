@@ -17,7 +17,7 @@ define([
   'cdf/lib/jquery'
 ], function (AddIn, Dashboard, $) {
   
-  var geonames = new AddIn({
+  var geonames = {
     name: "geonames",
     label: "GeoNames",
     defaults: {
@@ -71,13 +71,14 @@ define([
       return $.ajax({
         dataType: "json",
         url: opt.url,
+        method: 'GET',
         data: params,
         success: onSuccess,
         error: onError
       });
     }
-  });
-  Dashboard.registerGlobalAddIn("NewMapComponent", "LocationResolver", geonames);
+  };
+  Dashboard.registerGlobalAddIn("NewMapComponent", "LocationResolver", new AddIn(geonames));
 
   return geonames;
 
