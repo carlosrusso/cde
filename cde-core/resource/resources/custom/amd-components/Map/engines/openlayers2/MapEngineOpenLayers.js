@@ -245,7 +245,7 @@ define([
         var minZoom = _.isFinite(me.options.viewport.zoomLevel.min) ? me.options.viewport.zoomLevel.min : 0;
         var maxZoom = _.isFinite(me.options.viewport.zoomLevel.max) ? me.options.viewport.zoomLevel.max : this.getNumZoomLevels();
         return (z != null) && (z >= minZoom) && (z <= maxZoom );
-      };
+    };
 
 
 

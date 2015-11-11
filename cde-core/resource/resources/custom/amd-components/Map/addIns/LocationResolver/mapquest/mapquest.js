@@ -12,22 +12,22 @@
  */
 
 define([
-    'cdf/AddIn',
-    'cdf/Dashboard.Clean',
-    'cdf/lib/jquery',
-    'amd!cdf/lib/underscore',
-    '../nominatim/nominatim'],
-  function (AddIn, Dashboard, $, _, nominatim) {
+  'cdf/AddIn',
+  'cdf/Dashboard.Clean',
+  'cdf/lib/jquery',
+  'amd!cdf/lib/underscore',
+  '../nominatim/nominatim'
+], function (AddIn, Dashboard, $, _, nominatim) {
 
-    var mapquest = $.extend(true, {}, nominatim, {
-      name: "mapquest",
-      label: "MapQuest",
-      defaults: {
-        url: "http://open.mapquestapi.com/nominatim/v1/search"
-      }
-    });
-
-    Dashboard.registerGlobalAddIn("NewMapComponent", "LocationResolver", new AddIn(mapquest));
-    return mapquest;
-
+  var mapquest = $.extend(true, {}, nominatim, {
+    name: "mapquest",
+    label: "MapQuest",
+    defaults: {
+      url: "http://open.mapquestapi.com/nominatim/v1/search"
+    }
   });
+
+  Dashboard.registerGlobalAddIn("NewMapComponent", "LocationResolver", new AddIn(mapquest));
+  return mapquest;
+
+});

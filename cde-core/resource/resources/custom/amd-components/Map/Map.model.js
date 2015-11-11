@@ -196,7 +196,7 @@ define([
     },
 
     getStyleMap: function (styleName) {
-      var localStyleMap = _.result(this.styleMap) || {};
+      var localStyleMap = _.result(this, 'styleMap') || {};
       var styleMap = $.extend(true, {}, Styles.getStyleMap(styleName), localStyleMap.global, localStyleMap[styleName]);
       // TODO: should we just drop this?
       switch (styleName) {
