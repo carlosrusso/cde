@@ -222,6 +222,35 @@ define([
       this.addControls();
 
       registerViewportEvents.call(this);
+
+    },
+
+    zoomExtends: function() {
+
+      var me = this;
+
+      var latlngbounds = new google.maps.LatLngBounds();
+
+      this.map.data.forEach(function(feature) {
+
+        if ( feature.getGeometry().getType() == 'Point') {
+
+          latlngbounds.extend( feature.getGeometry().get() );
+
+        }
+
+      });
+
+      if (!latlngbounds.isEmpty()) {
+        this.map.setCenter(latlngbounds.getCenter());
+        this.map.fitBounds(latlngbounds);
+
+        return true;
+      }
+      else {
+        return false;
+      }
+
     },
     
     renderItem: function (modelItem) {
@@ -315,9 +344,6 @@ define([
       //this._addControlClick();
       this._addControlZoomBox();
       this._addControlBoxSelector();
-      
-      // Inicializa mapa no PanningMode
-      //this.setPanningMode();
       
     },
     
@@ -805,14 +831,12 @@ define([
       this.map.setZoom(zoomLevel);
 
       var centerPoint;
-      if (_.isFinite(centerLatitude) && _.isFinite(centerLongitude)) {
-        centerPoint = new google.maps.LatLng(centerLatitude, centerLongitude);
-        this.centered = true;
-        this.map.panTo(centerPoint);
-      } else {
-        this.map.panTo(new google.maps.LatLng(38, -9));
-      }
 
+      if ( !this.zoomExtends() )
+        this.map.panTo(new google.maps.LatLng(38, -9));
+
+      // Inicializa mapa no PanningMode
+      this.setPanningMode();
 
     },
 
