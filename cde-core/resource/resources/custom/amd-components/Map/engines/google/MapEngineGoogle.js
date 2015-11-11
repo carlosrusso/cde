@@ -47,7 +47,7 @@ define([
     
     constructor: function(options) {
       this.base();
-      //$.extend(this, options);
+      $.extend(this, options);
       this.controls = {}; // map controls
       this.controls.listenersHandle = {};
 
@@ -216,6 +216,8 @@ define([
         return style;
 
       });
+
+      this.addLayers();
       
       this.addControls();
 
@@ -265,7 +267,6 @@ define([
         'stroke-opacity': 'strokeOpacity',
         'stroke-width': 'strokeWeight',
         'r': 'scale',
-        //'graphicName': 'path',
         //Backwards compatibility
         'fillColor': 'fillColor',
         'fillOpacity': 'fillOpacity',
