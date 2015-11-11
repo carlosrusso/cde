@@ -66,7 +66,7 @@ define([
       addIns: addIns,
       styleMap: this.styleMap,
       viewport: viewport
-    }, _.result(this.options));
+    }, _.result(this, 'options'));
   }
 
 });
