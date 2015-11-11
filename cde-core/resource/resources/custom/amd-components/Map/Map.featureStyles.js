@@ -33,7 +33,7 @@ define([
           normal: {
             r: 10,
             graphicName: 'circle',
-            label: 'Normal',
+            //label: 'Normal',
             labelAlign: 'cm',
             labelYOffset: -20,
             fill: 'red',

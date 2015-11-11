@@ -217,6 +217,7 @@ define([
       var projectionWGS84 = new OpenLayers.Projection('EPSG:4326');
 
       var mapOptions = {
+        zoom: this.options.viewport.zoomLevel.default,
         zoomDuration: 10, // approximately match Google's zoom animation
         displayProjection: projectionWGS84,
         projection: projectionMap,
@@ -243,8 +244,8 @@ define([
       this.map.isValidZoomLevel = function(z){
         var minZoom = _.isFinite(me.options.viewport.zoomLevel.min) ? me.options.viewport.zoomLevel.min : 0;
         var maxZoom = _.isFinite(me.options.viewport.zoomLevel.max) ? me.options.viewport.zoomLevel.max : this.getNumZoomLevels();
-        return (z != null && z >= minZoom && z <= maxZoom );
-      };
+        return (z != null) && (z >= minZoom) && (z <= maxZoom );
+    };
 
 
 
@@ -346,7 +347,7 @@ define([
         if (bounds) {
           this.map.zoomToExtent(bounds);
         } else {
-          this.map.zoomTo(2);
+          this.map.zoomTo(this.options.viewport.zoomLevel.default);
         }
       }
 

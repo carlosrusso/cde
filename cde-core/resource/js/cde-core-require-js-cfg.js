@@ -18,6 +18,8 @@
 (function() {
 
   var requirePaths = requireCfg.paths;
+  requireCfg.map = requireCfg.map || {};
+  requireCfg.map['*'] = requireCfg.map['*'] || {};
   var requireMap = requireCfg.map;
 
   var isDebug = typeof document == "undefined" || document.location.href.indexOf("debug=true") > 0;
