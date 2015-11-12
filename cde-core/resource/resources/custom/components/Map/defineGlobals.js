@@ -33,5 +33,13 @@ define('cdf/Logger', function () {
 });
 
 define('text!./ControlPanel.html', function () {
-  return '<div class="map-control-panel"/>';
+  return '<div class="map-control-panel">'+
+    '<div class="map-control-button map-control-zoom-in"></div>'+
+    '<div class="map-control-button map-control-zoom-out"></div>'+
+    '<div class="map-controls-mode {{mode}}">'+
+    '<div class="map-control-button map-control-pan"></div>'+
+    '<div class="map-control-button map-control-zoombox"></div>'+
+    '<div class="map-control-button map-control-select"></div>'+
+    '</div>'+
+    '</div>';
 });

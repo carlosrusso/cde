@@ -16,9 +16,10 @@ define([
   'amd!cdf/lib/underscore',
   '../MapEngine',
   './MapComponentAsyncLoader',
-  '../../model/SelectionStates',
+  '../../model/MapModel',
   'css!./style-google'
-], function ($, _, MapEngine, MapComponentAsyncLoader, SelectionStates) {
+], function ($, _, MapEngine, MapComponentAsyncLoader, MapModel) {
+  var SelectionStates = MapModel.SelectionStates;
 
   function OurMapOverlay(startPoint, width, height, htmlContent, popupContentDiv, map, borderColor) {
 
@@ -496,7 +497,7 @@ define([
       google.maps.event.addListener(me.map, 'zoom_changed', function () {
 
         if (me.map.getZoom() < minZoom) me.map.setZoom(minZoom);
-        else if ( (me.map.getZoom() > maxZoom) && (!_.isNull()) ) me.map.setZoom(maxZoom);  // if is NULL, max is the limit of the map
+        else if (  (!_.isNull(maxZoom)) && (me.map.getZoom() > maxZoom) ) me.map.setZoom(maxZoom);  // if is NULL, max is the limit of the map
 
       });
     },

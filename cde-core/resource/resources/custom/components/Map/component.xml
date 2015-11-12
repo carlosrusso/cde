@@ -68,9 +68,10 @@
         <!-- <Dependency src="lib/OpenLayers.js" version="2.13.1">OpenLayers</Dependency> -->
       </Dependencies>
       <Styles>
-        <Style version="1.0" src="Map.css">NewMapComponent-style</Style>
-        <Style version="1.0" src="engines/openlayers2/style-openlayers2">NewMapComponent-style-ol2</Style>
-        <Style version="1.0" src="engines/google/style-google.css">NewMapComponent-style-google</Style>
+        <Style version="1.0" src="Map.css">Map-style</Style>
+        <Style version="1.0" src="ControlPanel/ControlPanel.css">Map-ControlPanel-style</Style>
+        <Style version="1.0" src="engines/openlayers2/style-openlayers2">Map-style-ol2</Style>
+        <Style version="1.0" src="engines/google/style-google.css">Map-style-google</Style>
       </Styles>
       <CustomProperties>
         <DesignerProperty>

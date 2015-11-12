@@ -248,7 +248,7 @@
       ]
     },
     {
-      name: "cde/components/NewMapComponent",
+      name: "cde/components/Map/Map",
       exclude: [
         // CSSs, otherwise paths (e.g. background images) are rewritten relative to the page and not the CSS file path
         "css!cde/components/NewMapComponent",

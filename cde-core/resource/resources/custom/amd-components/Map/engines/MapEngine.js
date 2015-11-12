@@ -12,12 +12,12 @@
  */
 
 define([
-  '../model/baseevents',
-  'cdf/Logger',
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
-  '../model/SelectionStates'
-], function (BaseEvents, Logger, $, _, SelectionStates) {
+  'cdf/lib/BaseEvents',
+  '../model/MapModel'
+], function ($, _, BaseEvents, MapModel) {
+  var SelectionStates = MapModel.SelectionStates;
 
   var MapEngine = BaseEvents.extend({
     tileServices: undefined,
