@@ -70,8 +70,8 @@
       <Styles>
         <Style version="1.0" src="Map.css">Map-style</Style>
         <Style version="1.0" src="ControlPanel/ControlPanel.css">Map-ControlPanel-style</Style>
-        <Style version="1.0" src="engines/openlayers2/style-openlayers2">Map-style-ol2</Style>
-        <Style version="1.0" src="engines/google/style-google.css">Map-style-google</Style>
+        <Style version="1.0" src="engines/openlayers2/styleOpenLayers2">Map-style-ol2</Style>
+        <Style version="1.0" src="engines/google/styleGoogle.css">Map-style-google</Style>
       </Styles>
       <CustomProperties>
         <DesignerProperty>
@@ -459,7 +459,7 @@
             <Parent>BaseProperty</Parent>
             <DefaultValue>0.5</DefaultValue>
             <Description>Shape Fill Opacity</Description>
-            <Tooltip>Value of shape's opacity (from 0 to 1)</Tooltip>
+            <Tooltip>Value of shape's opacity (from 0 to 1) [DEPRECATED]</Tooltip>
             <Advanced>false</Advanced>
             <InputType>Float</InputType>
             <OutputType>Number</OutputType>
@@ -473,7 +473,7 @@
             <Parent>BaseProperty</Parent>
             <DefaultValue>white</DefaultValue>
             <Description>Shape Stroke Color</Description>
-            <Tooltip>Define a color for shape's borders</Tooltip>
+            <Tooltip>Define a color for shape's borders [DEPRECATED]</Tooltip>
             <Advanced>false</Advanced>
             <InputType>String</InputType>
             <OutputType>String</OutputType>
@@ -487,7 +487,7 @@
             <Parent>BaseProperty</Parent>
             <DefaultValue>2</DefaultValue>
             <Description>Shape Stroke Width</Description>
-            <Tooltip>Define the width for shape's borders</Tooltip>
+            <Tooltip>Define the width for shape's borders [DEPRECATED]</Tooltip>
             <Advanced>false</Advanced>
             <InputType>Float</InputType>
             <OutputType>Number</OutputType>

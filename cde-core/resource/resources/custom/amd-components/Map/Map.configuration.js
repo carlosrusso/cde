@@ -38,8 +38,7 @@ define([
         name: this.mapEngineType,
         options: {
           rawOptions: {
-            map: {
-            }
+            map: {}
           },
           tileServices: this.tileServices,
           tileServicesOptions: this.tileServicesOptions,

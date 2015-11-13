@@ -22,7 +22,7 @@ define([
   'cdf/lib/OpenLayers',
   '../../model/MapModel',
   'cdf/Logger',
-  'css!./style-openlayers2'
+  'css!./styleOpenLayers2'
 ], function ($, _, MapEngine, OpenLayers, MapModel, Logger) {
   var SelectionStates = MapModel.SelectionStates;
 

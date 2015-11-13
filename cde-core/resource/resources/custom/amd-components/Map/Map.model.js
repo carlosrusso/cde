@@ -1,12 +1,13 @@
 define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
+  'cdf/Logger',
   './model/MapModel',
   './_getMapping',
   './FeatureStore/resolveShapes',
   './FeatureStore/resolveMarkers',
   './Map.featureStyles'
-], function ($, _,
+], function ($, _, Logger,
              MapModel,
              getMapping,
              resolveShapes, resolveMarkers,
@@ -49,7 +50,7 @@ define([
       });
 
       var seriesRoot = this._initSeries(this.mapMode, json);
-      if (json && json.metadata && json.resultset) {
+      if (json && json.metadata && json.resultset && json.resultset.length > 0) {
         this._addSeriesToModel(seriesRoot, json);
       }
 
@@ -102,7 +103,7 @@ define([
           var rmax = this.scales.r[1];
           var v = seriesRoot.get('extremes').r;
           //var r = rmin + (value - v.min)/(v.max - v.min)*(rmax-rmin); //linear scaling
-          var r = Math.sqrt(rmin * rmin + (rmax * rmax - rmin * rmin) * (value - v.min) / v.max - v.min); //sqrt scaling
+          var r = Math.sqrt(rmin * rmin + (rmax * rmax - rmin * rmin) * (value - v.min) / v.max - v.min); //sqrt scaling, i.e. area scales linearly with data
           if (_.isFinite(r)) {
             return r;
           }
@@ -198,9 +199,11 @@ define([
     getStyleMap: function (styleName) {
       var localStyleMap = _.result(this, 'styleMap') || {};
       var styleMap = $.extend(true, {}, Styles.getStyleMap(styleName), localStyleMap.global, localStyleMap[styleName]);
-      // TODO: should we just drop this?
+      // TODO: Remove shapeSettings definition/property in the next major version.
       switch (styleName) {
-        case 'shape0s':
+        case 'shapes':
+          Logger.warn('Usage of the "shapeSettings" property (including shapeSettings.fillOpacity, shapeSettings.strokeWidth and shapeSettings.strokeColor) is deprecated.');
+          Logger.warn('Support for these properties will be removed in the next major version.');
           return $.extend(true, styleMap, {
             pan: {
               unselected: {

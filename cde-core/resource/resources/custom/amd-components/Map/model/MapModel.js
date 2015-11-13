@@ -27,8 +27,8 @@ define([
       }
     },
 
-    getHover: function(){
-      return this.get('isHighlighted');
+    isHover: function(){
+      return this.get('isHighlighted') === true;
     },
 
     setHover: function(bool){
@@ -77,10 +77,10 @@ define([
 
     inferStyle: function (action) {
       if (_.isUndefined(action)){
-        action = this.getHover() === true?  'hover': 'normal';
+        action = this.isHover() === true?  'hover': 'normal';
       }
       var mode = this.root().get('mode');
-      var state = (this.getSelection() === true) ? 'selected' : 'unselected';
+      var state = (this.getSelection() === SelectionStates.ALL) ? 'selected' : 'unselected';
       return this.getStyle(mode, state, action || 'normal');
     },
     getFeatureType: function () {

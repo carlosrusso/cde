@@ -17,7 +17,7 @@ define([
   '../MapEngine',
   './MapComponentAsyncLoader',
   '../../model/MapModel',
-  'css!./style-google'
+  'css!./styleGoogle'
 ], function ($, _, MapEngine, MapComponentAsyncLoader, MapModel) {
   var SelectionStates = MapModel.SelectionStates;
 

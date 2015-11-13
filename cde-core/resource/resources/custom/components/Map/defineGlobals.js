@@ -4,6 +4,7 @@ var myglobals = {
   'amd!cdf/lib/backbone': Backbone,
   'cdf/AddIn': AddIn,
   'cdf/lib/Base': Base,
+  'cdf/lib/BaseSelectionTree': TreeFilter.Models.SelectionTree,
   'cdf/components/UnmanagedComponent': UnmanagedComponent,
   'cdf/lib/OpenLayers':OpenLayers,
   'cdf/lib/mustache': Mustache,

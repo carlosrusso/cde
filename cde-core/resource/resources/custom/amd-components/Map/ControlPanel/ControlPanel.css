@@ -1,26 +1,81 @@
-.map-control-panel .map-control-button{
-    width: 20px;
-    height: 20px;
-    border: 1px solid black;
-    background-size: 100% 100%;
+.map-control-panel {
+    position: absolute;
+    right: 25px;
+    margin-top: 25px;
 }
 
-.map-control-zoom-in {
-	background-image: url("/pentaho/content/pentaho-cdf-dd/resources/custom/amd-components/Map/theme/dark/zoom-plus-mini.png");
+.map-controls-mode {
+    margin-top: 15px;
 }
 
-.map-control-zoom-out {
-	background-image: url("/pentaho/content/pentaho-cdf-dd/resources/custom/amd-components/Map/theme/dark/zoom-minus-mini.png");
+.map-control-panel .map-control-button {
+    background-size: initial;
+    border: 1px solid #a0a0a0;
+    height: 30px;
+    width: 30px;
 }
 
-.map-control-pan {
-	background-image: url("/pentaho/plugin/pentaho-cdf/api/resources/js/lib/OpenMap/OpenLayers/img/panning-hand-off.png");
+.map-control-panel .map-control-button {
+    background-image: url(../images/map-btns-sprite.svg);
+    background-color: #FFFFFF;
 }
 
-.map-control-select {
-	background-image: url("/pentaho/plugin/pentaho-cdf/api/resources/js/lib/OpenMap/OpenLayers/img/drag-rectangle-off.png");
+.map-control-panel .map-control-button:hover {
+    cursor: pointer;
+    background-color: #a0a0a0;
 }
 
-.map-control-zoombox {
-	background-image: url("/pentaho/plugin/pentaho-cdf/api/resources/js/lib/OpenMap/OpenLayers/img/zoom-world-mini.png");
+.map-control-panel .map-control-button.map-control-zoom-in {
+    background-position: left top;
+    border-bottom: none;
+}
+
+.map-control-panel .map-control-button.map-control-zoom-out {
+    background-position: left 120px;
+}
+
+.map-control-panel .map-control-button.map-control-pan {
+    background-position: left 90px;
+    border-bottom: none;
+}
+
+.map-control-panel .map-control-button.map-control-zoombox {
+
+    background-position: left 60px;
+    border-bottom: none;
+}
+
+.map-control-panel .map-control-button.map-control-select {
+    background-position: left 30px;
+}
+
+.map-controls-mode.pan .map-control-pan,
+.map-controls-mode.zoombox .map-control-zoombox,
+.map-controls-mode.selection .map-control-select {
+    background-color: #a0a0a0;
+}
+
+/*----------------*/
+
+.map-control-panel .map-control-button.map-control-zoom-in:hover {
+    background-position: 30px top;
+    border-bottom: none;
+}
+
+.map-control-panel .map-control-button.map-control-zoom-out:hover {
+    background-position: 30px 120px;
+}
+
+.map-control-panel .map-control-button.map-control-pan:hover {
+    background-position: 30px 90px;
+    border-bottom: none;
+}
+
+.map-control-panel .map-control-button.map-control-zoombox:hover {
+    background-position: 30px 60px;
+    border-bottom: none;
+}
+
+.map-control-panel .map-control-button.map-control-select:hover {
+    background-position: 30px 30px;
 }
