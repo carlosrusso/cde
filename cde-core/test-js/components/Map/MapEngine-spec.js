@@ -1,5 +1,5 @@
 define([
-  'cde/components/Map/engines/openlayers2/mapengine-openlayers',
+  'cde/components/Map/engines/openlayers2/MapEngineOpenLayers',
   'cdf/lib/jquery'
 ], function(MapEngineOL2, $) {
 
