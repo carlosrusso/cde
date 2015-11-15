@@ -439,7 +439,7 @@ define("cde/components/Map/Map.lifecycle", [ "amd!cdf/lib/underscore" ], functio
                 calculatedStyle;
             }
         },
-        inferStyle: function(action) {
+        getStyle: function(action) {
             _.isUndefined(action) && (action = this.getHover() === !0 ? "hover" : "normal");
             var mode = this.root().get("mode"), state = this.getSelection() === !0 ? "selected" : "unselected";
             return this.getStyle(mode, state, action || "normal");
@@ -1061,7 +1061,7 @@ define("cde/components/Map/ControlPanel/ControlPanel", [ "cdf/lib/jquery", "amd!
                 data: $.extend(!0, {}, modelItem.get("data"), modelItem.get("rawData")),
                 id: modelItem.get("id"),
                 featureType: modelItem.getFeatureType(),
-                style: modelItem.inferStyle(),
+                style: modelItem.getStyle(),
                 isSelected: function() {
                     return modelItem.getSelection() === SelectionStates.ALL;
                 }
@@ -1176,7 +1176,7 @@ define("cde/components/Map/engines/openlayers2/MapEngineOpenLayers", [ "cdf/lib/
                 var layer = this.layers[modelItem.root().children().first().get("id")], geoJSON = modelItem.get("geoJSON"), me = this;
                 $.when(geoJSON).then(function(feature) {
                     if (feature) {
-                        var f = me._geoJSONParser.parseFeature(feature), style = modelItem.inferStyle();
+                        var f = me._geoJSONParser.parseFeature(feature), style = modelItem.getStyle();
                         $.extend(!0, f, {
                             attributes: {
                                 id: modelItem.get("id"),
@@ -1391,7 +1391,7 @@ define("cde/components/Map/engines/openlayers2/MapEngineOpenLayers", [ "cdf/lib/
             this.layers.markers.events.fallThrough = !0, this.layers.shapes.events.fallThrough = !0;
         },
         updateItem: function(modelItem) {
-            var style = this.toNativeStyle(modelItem.inferStyle()), featureType = modelItem.getFeatureType(), layerName = "marker" === featureType ? "markers" : "shapes", layer = this.layers[layerName], feature = layer.getFeaturesByAttribute("id", modelItem.get("id"))[0];
+            var style = this.toNativeStyle(modelItem.getStyle()), featureType = modelItem.getFeatureType(), layerName = "marker" === featureType ? "markers" : "shapes", layer = this.layers[layerName], feature = layer.getFeaturesByAttribute("id", modelItem.get("id"))[0];
             feature && (feature.style = style, feature.layer.drawFeature(feature, style));
         },
         tileLayer: function(name) {
@@ -1587,7 +1587,7 @@ define("cde/components/Map/engines/google/MapEngineGoogle", [ "cdf/lib/jquery", 
             };
         },
         updateItem: function(modelItem) {
-            var id = modelItem.get("id"), style = this.toNativeStyle(modelItem.inferStyle()), feature = this.map.data.getFeatureById(id);
+            var id = modelItem.get("id"), style = this.toNativeStyle(modelItem.getStyle()), feature = this.map.data.getFeatureById(id);
             this.map.data.overrideStyle(feature, style), console.log("updateItem");
         },
         renderMap: function(target) {
@@ -1598,7 +1598,7 @@ define("cde/components/Map/engines/google/MapEngineGoogle", [ "cdf/lib/jquery", 
             this.map = new google.maps.Map(target, mapOptions), this.map.data.setStyle(function(feature) {
                 var modelItem = me.model.findWhere({
                     id: feature.getId()
-                }), style = me.toNativeStyle(modelItem.inferStyle());
+                }), style = me.toNativeStyle(modelItem.getStyle());
                 return "marker" === modelItem.getFeatureType() && (style.icon || (style = {
                     icon: style
                 })), style;

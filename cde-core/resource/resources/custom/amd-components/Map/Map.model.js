@@ -5,13 +5,11 @@ define([
   './model/MapModel',
   './_getMapping',
   './FeatureStore/resolveShapes',
-  './FeatureStore/resolveMarkers',
-  './Map.featureStyles'
+  './FeatureStore/resolveMarkers'
 ], function ($, _, Logger,
              MapModel,
              getMapping,
-             resolveShapes, resolveMarkers,
-             Styles) {
+             resolveShapes, resolveMarkers) {
 
   return {
     resolveFeatures: function (json) {
@@ -69,8 +67,7 @@ define([
       return this.model.findWhere({id: seriesId});
     },
 
-    visualRoles: {
-    },
+    visualRoles: {},
 
     scales: {
       fill: 'default', //named colormap, or a colormap definition
@@ -143,13 +140,13 @@ define([
       var colNames = _.pluck(json.metadata, 'colName');
 
       var me = this;
+      var modes = this.STYLES.modes,
+        states = this.STYLES.states,
+        actions = this.STYLES.actions;
       var series = _.map(json.resultset, function (row, rowIdx) {
 
-        var id = row[mapping.id];
+        var id = me._getItemId(mapping, row, rowIdx);
         var styleMap = {};
-        var modes = ['pan', 'zoombox', 'selection'],
-          states = ['unselected', 'selected'],
-          actions = ['normal', 'hover'];
 
         _.each(modes, function (mode) {
           _.each(states, function (state) {
@@ -196,26 +193,20 @@ define([
       seriesRoot.add(series);
     },
 
-    getStyleMap: function (styleName) {
-      var localStyleMap = _.result(this, 'styleMap') || {};
-      var styleMap = $.extend(true, {}, Styles.getStyleMap(styleName), localStyleMap.global, localStyleMap[styleName]);
-      // TODO: Remove shapeSettings definition/property in the next major version.
-      switch (styleName) {
-        case 'shapes':
-          Logger.warn('Usage of the "shapeSettings" property (including shapeSettings.fillOpacity, shapeSettings.strokeWidth and shapeSettings.strokeColor) is deprecated.');
-          Logger.warn('Support for these properties will be removed in the next major version.');
-          return $.extend(true, styleMap, {
-            pan: {
-              unselected: {
-                normal: this.shapeSettings
-              }
-            }
-          });
+    _getItemId: function (mapping, row, rowIdx) {
+      var indexId = mapping.id;
+      if (!_.isFinite(indexId)) {
+        if (this.mapMode === 'shapes') {
+          indexId = 0;
+        } else {
+          indexId = -1; //Use rowIdx instead
+        }
       }
-      return styleMap;
+      var id = (indexId >= 0 && indexId < row.length) ? row[indexId] : rowIdx;
+      return id;
     }
 
-
   };
+
 
 });

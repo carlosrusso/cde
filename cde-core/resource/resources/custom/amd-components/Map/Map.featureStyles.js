@@ -1,127 +1,82 @@
 define([
-  'cdf/lib/jquery'
-], function ($) {
+  'cdf/lib/jquery',
+  'amd!cdf/lib/underscore',
+  'cdf/Logger'
+], function ($, _, Logger) {
 
   var styleMaps = {
     global: {
-      pan: {
+      normal: {
+        stroke: 'white'
+      },
+      hover: {
+        stroke: 'black',
+        cursor: 'pointer'
+      },
+      unselected: {
+        fillOpacity: 0.5
+      },
+      selected: {
+        fillOpacity: 0.9
+      },
+      selection: {
         unselected: {
-          normal: {
-            stroke: 'white',
-            fillOpacity: 0.5
-          },
-          hover: {
-            stroke: 'black',
-            fillOpacity: 0.5
-          }
-        },
-        selected: {
-          normal: {
-            stroke: 'white',
-            fillOpacity: 0.9
-          },
-          hover: {
-            stroke: 'black',
-            fillOpacity: 0.9
-          }
+          fill: 'gray'
         }
       }
     },
     markers: {
-      pan: {
-        unselected: {
-          normal: {
-            r: 10,
-            graphicName: 'circle',
-            //label: 'Normal',
-            labelAlign: 'cm',
-            labelYOffset: -20,
-            fill: 'red',
-            strokeWidth: 2,
-            fillOpacity: 0.4
-          },
-          hover: {}
-        },
-        selected: {
-          normal: {},
-          hover: {}
-        }
-      },
-      selection: {
-        unselected: {
-          normal: {
-            fill: 'gray'
-          },
-          hover: {}
-        },
-        selected: {
-          normal: {
-            fill: 'red'
-          },
-          hover: {}
-        }
-      }
+      r: 10,
+      graphicName: 'circle',
+      //label: 'Normal',
+      labelAlign: 'cm',
+      labelYOffset: -20,
+      fill: 'red',
+      strokeWidth: 2
+
     },
     shapes: {
-      pan: {
-        unselected: {
-          normal: {
-            fontColor: 'black',
-            zIndex: 0,
-            strokeWidth: 1
-          },
-          hover: {
-            zIndex: 1,
-            strokeWidth: 2,
-            fill: 'orange',
-            fontColor: 'orange'
-            //stroke: '#ffffff'
-          }
-        },
-        selected: {
-          normal: {
-            zIndex: 0,
-            fill: 'red'
-          },
-          hover: {
-            zIndex: 1,
-            fill: 'darkred'
-          }
-        }
+      normal: {
+        strokeWidth: 1,
+        zIndex: 0
       },
-      selection: {
-        unselected: {
-          normal: {
-            fill: 'gray'
-          }
+      hover: {
+        fill: 'orange',
+        strokeWidth: 2,
+        zIndex: 1
+      },
+      selected: {
+        normal: {
+          fill: 'red'
+        },
+        hover: {
+          fill: 'darkred'
         }
       }
     }
-  };
-
-  var emptyStyle = {
-    unselected: {
-      normal: {},
-      hover: {}
-    },
-    selected: {
-      normal: {},
-      hover: {}
-    }
-  };
-
-  var emptyStyleMap = {
-    pan: $.extend({}, emptyStyle),
-    zoombox: $.extend({}, emptyStyle),
-    selection: $.extend({}, emptyStyle)
   };
 
   return {
-    getStyleMap: getStyleMap
+    getStyleMap: getStyleMap,
+    STYLES: {
+      modes: ['pan', 'zoombox', 'selection'],
+      states: ['unselected', 'selected'],
+      actions: ['normal', 'hover']
+    }
   };
 
-  function getStyleMap(styleMap) {
-    return $.extend(true, {}, emptyStyleMap, styleMaps[styleMap]);
+  function getStyleMap(styleName) {
+    var localStyleMap = _.result(this, 'styleMap') || {};
+    var styleMap = $.extend(true, {}, styleMaps.global, styleMaps[styleName], localStyleMap.global, localStyleMap[styleName]);
+    // TODO: Remove shapeSettings definition/property in the next major version.
+    switch (styleName) {
+      case 'shapes':
+        Logger.warn('Usage of the "shapeSettings" property (including shapeSettings.fillOpacity, shapeSettings.strokeWidth and shapeSettings.strokeColor) is deprecated.');
+        Logger.warn('Support for these properties will be removed in the next major version.');
+      //return $.extend(true, styleMap, this.shapeSettings);
+    }
+    return styleMap;
   }
+
 
 });

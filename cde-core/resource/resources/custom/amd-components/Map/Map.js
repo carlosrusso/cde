@@ -80,6 +80,7 @@ define([
   './Map.selector',
   './Map.model',
   './Map.configuration',
+  './Map.featureStyles',
 
   './Map.colorMap',
   './ControlPanel/ControlPanel',
@@ -90,7 +91,8 @@ define([
   'css!./Map'
 ], function ($, _, UnmanagedComponent,
              ILifecycle,
-             ISelector, IMapModel, IConfiguration, IColorMap,
+             ISelector, IMapModel, IConfiguration, IFeatureStyle,
+             IColorMap,
              ControlPanel,
              tileServices,
              OpenLayersEngine, GoogleMapEngine) {
@@ -101,6 +103,7 @@ define([
     .extend(ISelector)
     .extend(IMapModel)
     .extend(IConfiguration)
+    .extend(IFeatureStyle)
     .extend(IColorMap)
     .extend(tileServices)
     .extend({
@@ -204,7 +207,7 @@ define([
         this.controlPanel.render();
         var me = this;
         var eventMapping = {
-          'selection:complete': _.bind(this.processChange, this),
+          'selection:complete': _.bind(this.processChange, this), //TODO: move to model setup
           'zoom:in': _.bind(this.mapEngine.zoomIn, this.mapEngine),
           'zoom:out': _.bind(this.mapEngine.zoomOut, this.mapEngine)
         };
@@ -354,21 +357,19 @@ define([
           }
           $.extend(true, st, extraSt);
           var opts = $.extend(true, {}, this.getAddInOptions("MarkerImage", addIn.getName()), extraOpts);
-          var markerIconUrl = addIn.call(this.placeholder(), st, opts);
+          var markerIcon = addIn.call(this.placeholder(), st, opts);
 
           // Update model's style
-          $.extend(true, m.attributes.styleMap, {
-            pan: {
-              unselected: {
-                normal: {
-                  // TODO: works for now, for openlayers. must improve this
-                  graphicWidth: st.width,
-                  graphicHeight: st.height,
-                  externalGraphic: markerIconUrl
-                }
-              }
-            }
-          });
+          if (_.isObject(markerIcon)) {
+            $.extend(true, m.attributes.styleMap, markerIcon);
+          } else {
+            $.extend(true, m.attributes.styleMap, {
+              // TODO: works for now, for openlayers. must improve this
+              graphicWidth: st.width,
+              graphicHeight: st.height,
+              externalGraphic: markerIcon
+            });
+          }
         }
       },
 

@@ -171,7 +171,7 @@ define([
 
       var id = modelItem.get('id');
 
-      var style = this.toNativeStyle( modelItem.inferStyle() );
+      var style = this.toNativeStyle( modelItem.getStyle() );
       var feature = this.map.data.getFeatureById(id);
 
       this.map.data.overrideStyle(feature, style);
@@ -198,7 +198,7 @@ define([
       this.map.data.setStyle(function(feature) {
 
         var modelItem = me.model.findWhere({id: feature.getId()});
-        var style = me.toNativeStyle( modelItem.inferStyle() );
+        var style = me.toNativeStyle( modelItem.getStyle() );
 
         //if (style.path == 'circle') {
         //

@@ -4,27 +4,64 @@ define([
   'cdf/lib/jquery'
 ], function (BaseSelectionTree, _, $) {
   var SelectionStates = BaseSelectionTree.SelectionStates;
+  var MODES = {
+    'pan': 'pan',
+    'zoombox': 'zoombox',
+    'selection': 'selection'
+  };
 
-  var MapModel = BaseSelectionTree.extend({
+  return BaseSelectionTree.extend({
     defaults: {
       id: undefined,
-      label: "",
+      label: '',
       isSelected: false,
       isHighlighted: false,
       isVisible: true,
       numberOfSelectedItems: 0,
       numberOfItems: 0,
       rawData: null,
-      styleMap: {
-        unselected: {
-          normal: {},
-          hover: {}
-        },
-        selected: {
-          normal: {},
-          hover: {}
-        }
+      styleMap: {}
+    },
+
+    constructor: function(){
+      this.base.apply(this, arguments);
+      if (this.isRoot()){
+        this.setPanningMode();
       }
+    },
+
+    setPanningMode: function () {
+      if (this.isSelectionMode()){
+        this.trigger('selection:complete');
+      }
+      this.root().set('mode', MODES.pan);
+      return this;
+    },
+
+    setZoomBoxMode: function () {
+      this.root().set('mode', MODES.zoombox);
+      return this;
+    },
+
+    setSelectionMode: function () {
+      this.root().set('mode', MODES.selection);
+      return this;
+    },
+
+    getMode: function () {
+      return this.root().get('mode');
+    },
+
+    isPanningMode: function () {
+      return this.root().get('mode') === MODES.pan;
+    },
+
+    isZoomBoxMode: function () {
+      return this.root().get('mode') === MODES.zoombox;
+    },
+
+    isSelectionMode: function () {
+      return this.root().get('mode') === MODES.selection;
     },
 
     isHover: function(){
@@ -41,48 +78,29 @@ define([
      * Rules:
      *
      */
-    getStyle: function (mode, state, action) {
+    _getStyle: function (mode, state, action) {
       var myStyleMap = this.get('styleMap');
 
       var parentStyle;
       if (this.parent()) {
-        parentStyle = this.parent().getStyle();
+        parentStyle = this.parent()._getStyle(mode, state, action);
       } else {
         parentStyle = {};
       }
 
-      var style = $.extend(true, {}, parentStyle, myStyleMap);
-
-      switch (arguments.length) {
-        case 0:
-          return style;
-        case 1:
-          return style[mode];
-        case 2:
-          return style[mode][state];
-        case 3:
-          var calculatedStyle = $.extend(true, {}, ((style[mode] || {})[state] || {})[action]);
-          // Attempt to fill in the gaps
-          _.defaults(calculatedStyle,
-            style[mode][state].normal,
-            style[mode].unselected.normal,
-            style.pan[state][action],
-            style.pan[state].normal,
-            style.pan.unselected.normal
-          );
-          //console.log(this.get('id'), mode, state, action, style, calculatedStyle);
-          return calculatedStyle;
-      }
+      return $.extend(true,
+        getStyle(parentStyle, mode, state, action),
+        getStyle(myStyleMap, mode, state, action)
+      );
     },
 
-    inferStyle: function (action) {
-      if (_.isUndefined(action)){
-        action = this.isHover() === true?  'hover': 'normal';
-      }
+    getStyle: function () {
       var mode = this.root().get('mode');
       var state = (this.getSelection() === SelectionStates.ALL) ? 'selected' : 'unselected';
-      return this.getStyle(mode, state, action || 'normal');
+      var action = this.isHover() === true?  'hover': 'normal';
+      return this._getStyle(mode, state, action);
     },
+
     getFeatureType: function () {
       var featureTypes = {
         'shapes': 'shape',
@@ -103,10 +121,51 @@ define([
 
 
   }, {
+    Modes: MODES,
     SelectionStates: BaseSelectionTree.SelectionStates
   });
 
 
-  return MapModel;
+
+  function getStyle(config, mode, state, action) {
+    var styleKeywords = [
+      ['normal', 'hover'],
+      ['unselected', 'selected'],
+      ['pan', 'zoombox', 'selection']
+    ];
+
+    var desiredKeywords = _.map(styleKeywords, function (list, idx) {
+      return _.intersection(list, [[action || '', state || '', mode || ''][idx]])[0];
+    });
+
+    return computeStyle(config, desiredKeywords);
+  }
+
+  function computeStyle(config, desiredKeywords) {
+    var plainStyle = {};
+    var compoundStyle = {};
+    _.each(config, function (value, key) {
+      if (_.isObject(value)) {
+        compoundStyle[key] = value;
+      } else {
+        plainStyle[key] = value;
+      }
+    });
+
+    //console.log('desiredKeywords', desiredKeywords);
+    //console.log('computing plain style ', plainStyle);
+
+    var style = _.reduce(compoundStyle, function (memo, value, key) {
+      _.each(desiredKeywords, function (keyword) {
+        if (keyword === key) {
+          //console.log('computing compound key=', key, ' value=', value);
+          $.extend(true, memo, computeStyle(value, desiredKeywords));
+        }
+      });
+      return memo;
+    }, plainStyle);
+    return style;
+  }
+
 
 });

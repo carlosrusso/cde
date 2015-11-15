@@ -125,7 +125,7 @@ define([
           return;
         }
         var f = me._geoJSONParser.parseFeature(feature);
-        var style = modelItem.inferStyle();
+        var style = modelItem.getStyle();
         $.extend(true, f, {
           attributes: {
             id: modelItem.get('id'),
@@ -514,7 +514,7 @@ define([
     },
 
     updateItem: function (modelItem) {
-      var style = this.toNativeStyle(modelItem.inferStyle());
+      var style = this.toNativeStyle(modelItem.getStyle());
       var featureType = modelItem.getFeatureType();
       var layerName = featureType === 'marker' ? 'markers' : 'shapes';
       var layer = this.layers[layerName];

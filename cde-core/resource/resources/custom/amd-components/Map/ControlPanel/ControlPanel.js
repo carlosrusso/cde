@@ -1,17 +1,14 @@
 define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
-  'cdf/lib/BaseEvents',
   'cdf/lib/mustache',
+  'cdf/lib/BaseEvents',
+  '../model/MapModel',
   'text!./ControlPanel.html',
   'css!./ControlPanel'
-], function ($, _, BaseEvents, Mustache, template) {
+], function ($, _, Mustache, BaseEvents, MapModel, template) {
 
-  var MODES = {
-    'pan': 'pan',
-    'zoombox': 'zoombox',
-    'selection': 'selection'
-  };
+  var MODES = MapModel.Modes;
 
   var ControlPanel = BaseEvents.extend({
     constructor: function (domNode, model, options) {
@@ -19,13 +16,12 @@ define([
       this.ph = $(domNode);
       this.model = model;
       this.options = options;
-      this.setPanningMode();
       return this;
     },
 
     render: function () {
       var viewModel = {
-        mode: this.model.get('mode')
+        mode: this.model.getMode()
       };
       var html = Mustache.render(template, viewModel);
       this.ph.empty().append(html);
@@ -44,37 +40,18 @@ define([
     },
 
     setPanningMode: function () {
-      if (this.isSelectionMode()){
-        this.trigger('selection:complete');
-      }
-      this.model.set('mode', MODES.pan);
+      this.model.setPanningMode();
       return this;
     },
 
     setZoomBoxMode: function () {
-      this.model.set('mode', MODES.zoombox);
+      this.model.setZoomBoxMode();
       return this;
     },
 
     setSelectionMode: function () {
-      this.model.set('mode', MODES.selection);
+      this.model.setSelectionMode();
       return this;
-    },
-
-    getMode: function () {
-      return this.model.get('mode');
-    },
-
-    isPanningMode: function () {
-      return this.model.get('mode') === MODES.pan;
-    },
-
-    isZoomBoxMode: function () {
-      return this.model.get('mode') === MODES.zoombox;
-    },
-
-    isSelectionMode: function () {
-      return this.model.get('mode') === MODES.selection;
     },
 
     _bindEvents: function () {
@@ -94,7 +71,7 @@ define([
     },
 
     _updateView: function(){
-      var mode = this.getMode();
+      var mode = this.model.getMode();
       this.ph.find('.map-controls-mode')
         .removeClass(_.values(MODES).join(' '))
         .addClass(mode)

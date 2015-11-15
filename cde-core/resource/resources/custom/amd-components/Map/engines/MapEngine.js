@@ -67,7 +67,7 @@ define([
         data: $.extend(true, {}, modelItem.get('data'), modelItem.get('rawData')), //TODO review this: data, or rawData?
         id: modelItem.get('id'),
         featureType: modelItem.getFeatureType(),
-        style: modelItem.inferStyle(),
+        style: modelItem.getStyle(),
         isSelected: function () {
           return modelItem.getSelection() === SelectionStates.ALL;
         }
