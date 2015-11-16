@@ -3,12 +3,24 @@ define([
   'amd!cdf/lib/underscore',
   'cdf/lib/jquery'
 ], function (BaseSelectionTree, _, $) {
-  var SelectionStates = BaseSelectionTree.SelectionStates;
   var MODES = {
     'pan': 'pan',
     'zoombox': 'zoombox',
     'selection': 'selection'
   };
+  var STATES = {
+    'selected': 'selected',
+    'unselected': 'unselected'
+  };
+  var ACTIONS = {
+    'normal': 'normal',
+    'hover': 'hover'
+  };
+  var FEATURE_TYPES = {
+    'shapes': 'shape',
+    'markers': 'marker'
+  };
+  var SelectionStates = BaseSelectionTree.SelectionStates;
 
   return BaseSelectionTree.extend({
     defaults: {
@@ -96,17 +108,13 @@ define([
 
     getStyle: function () {
       var mode = this.root().get('mode');
-      var state = (this.getSelection() === SelectionStates.ALL) ? 'selected' : 'unselected';
-      var action = this.isHover() === true?  'hover': 'normal';
+      var state = (this.getSelection() === SelectionStates.ALL) ? STATES.selected : STATES.unselected;
+      var action = this.isHover() === true?  ACTIONS.hover: ACTIONS.normal;
       return this._getStyle(mode, state, action);
     },
 
     getFeatureType: function () {
-      var featureTypes = {
-        'shapes': 'shape',
-        'markers': 'marker'
-      };
-      return featureTypes[this._getParents([])[1]];
+      return FEATURE_TYPES[this._getParents([])[1]];
     },
 
     _getParents: function (list) {
@@ -122,6 +130,9 @@ define([
 
   }, {
     Modes: MODES,
+    States: STATES,
+    Actions: ACTIONS,
+    FeatureTypes: FEATURE_TYPES,
     SelectionStates: BaseSelectionTree.SelectionStates
   });
 
@@ -129,9 +140,9 @@ define([
 
   function getStyle(config, mode, state, action) {
     var styleKeywords = [
-      ['normal', 'hover'],
-      ['unselected', 'selected'],
-      ['pan', 'zoombox', 'selection']
+      _.values(ACTIONS),
+      _.values(STATES),
+      _.values(MODES)
     ];
 
     var desiredKeywords = _.map(styleKeywords, function (list, idx) {

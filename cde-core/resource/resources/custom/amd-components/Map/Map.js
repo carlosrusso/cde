@@ -233,7 +233,7 @@ define([
         var events = [
           'marker:click', 'marker:mouseover', 'marker:mouseout',
           'shape:click', 'shape:mouseover', 'shape:mouseout',
-          'map:zoom', 'map:center'
+          'map:zoom', 'map:center' //TODO: consider renaming these to viewport:zoom and viewport:center
         ];
         _.each(events, function (event) {
           component.listenTo(engine, event, function () {
@@ -254,7 +254,7 @@ define([
           if (_.isFunction(me.markerClickFunction)) {
             result = me.markerClickFunction(event);
           }
-          if (result !== false) {
+          if (result !== false && this.model.isPanningMode()) {
             // built-in click handler for markers
             me.markerClickCallback(event);
           }
@@ -282,8 +282,12 @@ define([
           if (_.isFunction(me.shapeMouseOut)) {
             result = me.shapeMouseOut(event);
           }
-          return;
           result = _.isObject(result) ? result : {};
+          if (_.size(result) > 0) {
+            event.draw(_.defaults(result, event.style));
+          }
+          return;
+          // Disabled
           if (event.isSelected()) {
             event.draw(_.defaults(result, event.getSelectedStyle()));
           } else if (_.size(result) > 0) {
@@ -388,30 +392,26 @@ define([
       },
 
       markerClickCallback: function (event) {
-        return;
-        var elt = event.data;
-        var defaultMarkers = event.marker.defaultMarkers;
-        var mapping = event.marker.mapping;
-        var position = event.marker.position;
+        var data = event.data;
         var me = this;
-        _.each(this.popupParameters, function (eltA) {
-          me.dashboard.fireChange(eltA[1], event.data[mapping[eltA[0].toLowerCase()]]);
-        });
+        if (this.popupContentsDiv || data[me.mapping.popupContents]) {
+          _.each(this.popupParameters, function (paramDef) {
+            me.dashboard.fireChange(paramDef[1], data[me.mapping[paramDef[0].toLowerCase()]]);
+          });
 
-        if (this.popupContentsDiv || mapping.popupContents) {
-          var contents;
-          if (mapping.popupContents) contents = elt[mapping.popupContents];
-          var height = mapping.popupContentsHeight ? elt[mapping.popupContentsHeight] : undefined;
-          var width = mapping.popupContentsWidth ? elt[mapping.popupContentsWidth] : undefined;
-          height = height || this.popupHeight;
-          width = width || this.popupWidth;
-          //  if (!contents) contents = $("#" + myself.popupContentsDiv).html();
+          var height = data[me.mapping.popupContentsHeight] || this.popupHeight;
+          var width = data[me.mapping.popupContentsWidth] || this.popupWidth;
+          var contents = data[me.mapping.popupContents] || $("#" + this.popupContentsDiv).html(); //TODO: revisit this
 
-          var borderColor = undefined;
-          if (defaultMarkers) {
+          // TODO: The following block should be revised, as it depends on too many parameters.
+          // Why should we hardcode the border colors after all?
+          var borderColor;
+          var isDefaultMarker = _.isUndefined(data.marker) && !this.markerCggGraph && _.isUndefined(me.marker) && me.configuration.addIns.MarkerImage.name === 'urlMarker';
+          if (isDefaultMarker) { // access defaultMarkers
             var borderColors = ["#394246", "#11b4eb", "#7a879a", "#e35c15", "#674f73"];
-            borderColor = borderColors[position % 5];
+            borderColor = borderColors[event.model.get('rowIdx') % borderColors.length];
           }
+
           this.mapEngine.showPopup(event.data, event.feature, height, width, contents, this.popupContentsDiv, borderColor);
         }
       }

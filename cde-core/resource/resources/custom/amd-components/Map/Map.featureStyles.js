@@ -14,10 +14,10 @@ define([
         cursor: 'pointer'
       },
       unselected: {
-        fillOpacity: 0.5
+        'fill-opacity': 0.5
       },
       selected: {
-        fillOpacity: 0.9
+        'fill-opacity': 0.9
       },
       selection: {
         unselected: {
@@ -27,23 +27,23 @@ define([
     },
     markers: {
       r: 10,
-      graphicName: 'circle',
+      symbol: 'circle',
       //label: 'Normal',
       labelAlign: 'cm',
       labelYOffset: -20,
       fill: 'red',
-      strokeWidth: 2
+      'stroke-width': 2
 
     },
     shapes: {
       normal: {
-        strokeWidth: 1,
-        zIndex: 0
+        'stroke-width': 1,
+        'z-index': 0
       },
       hover: {
         fill: 'orange',
-        strokeWidth: 2,
-        zIndex: 1
+        'stroke-width': 2,
+        'z-index': 1
       },
       selected: {
         normal: {

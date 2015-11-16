@@ -46,6 +46,9 @@ define([
         'stroke-opacity': 'strokeOpacity',
         'stroke-width': 'strokeWidth',
         'r': 'pointRadius',
+        'z-index': 'graphicZIndex',
+        //Adapted
+        'symbol': 'graphicName',
         //Backwards compatibility
         'fillColor': 'fillColor',
         'fillOpacity': 'fillOpacity',
@@ -380,7 +383,6 @@ define([
         toggle: true,
         multiple: true,
         hover: false,
-        highlightOnly: true,
         box: true
       });
       this.map.addControl(this.controls.boxSelector);

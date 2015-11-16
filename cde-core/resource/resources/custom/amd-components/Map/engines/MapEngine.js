@@ -64,6 +64,7 @@ define([
     },
     _wrapEvent: function (modelItem) {
       return {
+        model: modelItem,
         data: $.extend(true, {}, modelItem.get('data'), modelItem.get('rawData')), //TODO review this: data, or rawData?
         id: modelItem.get('id'),
         featureType: modelItem.getFeatureType(),
