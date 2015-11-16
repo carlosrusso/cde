@@ -20,10 +20,11 @@ define([
   'amd!cdf/lib/underscore',
   '../MapEngine',
   'cdf/lib/OpenLayers',
-  '../../model/SelectionStates',
+  '../../model/MapModel',
   'cdf/Logger',
-  'css!./style-openlayers2'
-], function ($, _, MapEngine, OpenLayers, SelectionStates, Logger) {
+  'css!./styleOpenLayers2'
+], function ($, _, MapEngine, OpenLayers, MapModel, Logger) {
+  var SelectionStates = MapModel.SelectionStates;
 
   var OpenLayersEngine = MapEngine.extend({
     map: undefined,
@@ -45,6 +46,9 @@ define([
         'stroke-opacity': 'strokeOpacity',
         'stroke-width': 'strokeWidth',
         'r': 'pointRadius',
+        'z-index': 'graphicZIndex',
+        //Adapted
+        'symbol': 'graphicName',
         //Backwards compatibility
         'fillColor': 'fillColor',
         'fillOpacity': 'fillOpacity',
@@ -124,7 +128,7 @@ define([
           return;
         }
         var f = me._geoJSONParser.parseFeature(feature);
-        var style = modelItem.inferStyle();
+        var style = modelItem.getStyle();
         $.extend(true, f, {
           attributes: {
             id: modelItem.get('id'),
@@ -178,9 +182,7 @@ define([
     },
 
 
-    showPopup: function (data, mapElement, popupHeight, popupWidth, contents, popupContentDiv, borderColor) {
-
-      var feature = mapElement;
+    showPopup: function (data, feature, popupHeight, popupWidth, contents, popupContentDiv, borderColor) {
 
       if (popupContentDiv && popupContentDiv.length > 0) {
         var div = $('<div/>');
@@ -193,7 +195,7 @@ define([
         name = name + borderColor.substring(1);
       }
 
-      var p = mapElement.geometry.getCentroid(); // Hack to get the point
+      var p = feature.geometry.getCentroid(); // Hack to get the point
       feature.lonlat = new OpenLayers.LonLat(p.x, p.y);
 
       var popup = new OpenLayers.Popup.Anchored(name,
@@ -241,12 +243,11 @@ define([
       this.map = new OpenLayers.Map(target, mapOptions);
 
       var me = this;
-      this.map.isValidZoomLevel = function(z){
+      this.map.isValidZoomLevel = function (z) {
         var minZoom = _.isFinite(me.options.viewport.zoomLevel.min) ? me.options.viewport.zoomLevel.min : 0;
         var maxZoom = _.isFinite(me.options.viewport.zoomLevel.max) ? me.options.viewport.zoomLevel.max : this.getNumZoomLevels();
         return (z != null) && (z >= minZoom) && (z <= maxZoom );
-    };
-
+      };
 
 
       this.addLayers();
@@ -382,7 +383,6 @@ define([
         toggle: true,
         multiple: true,
         hover: false,
-        highlightOnly: true,
         box: true
       });
       this.map.addControl(this.controls.boxSelector);
@@ -516,7 +516,7 @@ define([
     },
 
     updateItem: function (modelItem) {
-      var style = this.toNativeStyle(modelItem.inferStyle());
+      var style = this.toNativeStyle(modelItem.getStyle());
       var featureType = modelItem.getFeatureType();
       var layerName = featureType === 'marker' ? 'markers' : 'shapes';
       var layer = this.layers[layerName];

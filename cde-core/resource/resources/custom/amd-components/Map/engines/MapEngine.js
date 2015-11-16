@@ -12,12 +12,12 @@
  */
 
 define([
-  '../model/baseevents',
-  'cdf/Logger',
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
-  '../model/SelectionStates'
-], function (BaseEvents, Logger, $, _, SelectionStates) {
+  'cdf/lib/BaseEvents',
+  '../model/MapModel'
+], function ($, _, BaseEvents, MapModel) {
+  var SelectionStates = MapModel.SelectionStates;
 
   var MapEngine = BaseEvents.extend({
     tileServices: undefined,
@@ -64,10 +64,11 @@ define([
     },
     _wrapEvent: function (modelItem) {
       return {
+        model: modelItem,
         data: $.extend(true, {}, modelItem.get('data'), modelItem.get('rawData')), //TODO review this: data, or rawData?
         id: modelItem.get('id'),
         featureType: modelItem.getFeatureType(),
-        style: modelItem.inferStyle(),
+        style: modelItem.getStyle(),
         isSelected: function () {
           return modelItem.getSelection() === SelectionStates.ALL;
         }

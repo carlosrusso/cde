@@ -1,7 +1,7 @@
 define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
-  './ShapeConversion'
+  './shapeConversion'
 ], function ($, _, ShapeConversion) {
 
   return resolveShapes;

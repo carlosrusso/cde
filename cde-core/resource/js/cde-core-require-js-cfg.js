@@ -20,7 +20,7 @@
   var requirePaths = requireCfg.paths;
   requireCfg.map = requireCfg.map || {};
   requireCfg.map['*'] = requireCfg.map['*'] || {};
-  var requireMap = requireCfg.map;
+  var requireMapAll = requireCfg.map['*'];
 
   var isDebug = typeof document == "undefined" || document.location.href.indexOf("debug=true") > 0;
 
@@ -49,7 +49,7 @@
   requirePaths['cde/components/PopupComponent'] = prefix + '/popup/PopupComponent';
   requirePaths['cde/components/ExportPopupComponent'] = prefix + '/popup/ExportPopupComponent';
 
-  requireMap["*"]['cde/components/NewMapComponent'] = 'cde/components/Map/Map';
+  requireMapAll['cde/components/NewMapComponent'] = 'cde/components/Map/Map';
 
   requirePaths['cde/components/ExportButtonComponent'] = prefix + '/exportButton/ExportButtonComponent';
 

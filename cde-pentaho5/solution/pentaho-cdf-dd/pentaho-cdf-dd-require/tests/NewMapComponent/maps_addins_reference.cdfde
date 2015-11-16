@@ -851,6 +851,11 @@
       "value": "map_LocationResolver"
      },
      {
+      "name": "parameter",
+      "value": "",
+      "type": "Parameter"
+     },
+     {
       "name": "listeners",
       "type": "Listeners",
       "value": "[]"
@@ -889,6 +894,11 @@
       "name": "defaultZoomLevel",
       "type": "Integer",
       "value": ""
+     },
+     {
+      "name": "fillOpacity",
+      "value": 0.5,
+      "type": "Float"
      },
      {
       "name": "locationResolver",
@@ -956,6 +966,16 @@
       "value": ""
      },
      {
+      "name": "strokeColor",
+      "value": "white",
+      "type": "String"
+     },
+     {
+      "name": "strokeWidth",
+      "value": 2,
+      "type": "Float"
+     },
+     {
       "name": "tilesets",
       "type": "tilesetsCustom",
       "value": "mapquest"
@@ -996,6 +1016,16 @@
       "value": ""
      },
      {
+      "name": "preChange",
+      "value": "",
+      "type": "JavaScript"
+     },
+     {
+      "name": "postChange",
+      "value": "",
+      "type": "JavaScript"
+     },
+     {
       "name": "tooltip",
       "type": "Html",
       "value": ""
@@ -1027,6 +1057,11 @@
       "name": "name",
       "type": "Id",
       "value": "map_ShapeResolver_geoJSON"
+     },
+     {
+      "name": "parameter",
+      "value": "",
+      "type": "Parameter"
      },
      {
       "name": "listeners",
@@ -1067,6 +1102,11 @@
       "name": "defaultZoomLevel",
       "type": "Integer",
       "value": ""
+     },
+     {
+      "name": "fillOpacity",
+      "value": 0.5,
+      "type": "Float"
      },
      {
       "name": "locationResolver",
@@ -1134,6 +1174,16 @@
       "value": ""
      },
      {
+      "name": "strokeColor",
+      "value": "white",
+      "type": "String"
+     },
+     {
+      "name": "strokeWidth",
+      "value": 2,
+      "type": "Float"
+     },
+     {
       "name": "tilesets",
       "type": "tilesetsCustom",
       "value": "mapquest"
@@ -1161,7 +1211,7 @@
      {
       "name": "preExecution",
       "type": "JavaScript",
-      "value": "function(){\n    var getResource = this.dashboard.getWebAppPath() + '/plugin/pentaho-cdf-dd/api/resources';\n\n    this.shapeResolver = 'geoJSON';\n    this.setAddInOptions('ShapeResolver', 'geoJSON', {\n        url: getResource + '${solution:countries.js}', //BA server does not recognize the .geojson extension\n        idPropertyName: 'NAME' //GeoJSON feature property that will be used to index the feature\n    });\n\n    this.shapeSettings = {\n        strokeWidth: 1,\n        zIndex: 0,\n    }\n} \n "
+      "value": "function(){\n    var getResource = this.dashboard.getWebAppPath() + '/plugin/pentaho-cdf-dd/api/resources';\n\n    this.shapeResolver = 'geoJSON';\n    this.setAddInOptions('ShapeResolver', 'geoJSON', {\n        url: getResource + '${solution:countries.js}', //BA server does not recognize the .geojson extension\n        idPropertyName: 'NAME' //GeoJSON feature property that will be used to index the feature\n    });\n\n} \n "
      },
      {
       "name": "postExecution",
@@ -1172,6 +1222,16 @@
       "name": "postFetch",
       "type": "JavaScript",
       "value": ""
+     },
+     {
+      "name": "preChange",
+      "value": "",
+      "type": "JavaScript"
+     },
+     {
+      "name": "postChange",
+      "value": "",
+      "type": "JavaScript"
      },
      {
       "name": "tooltip",
@@ -1191,7 +1251,7 @@
      {
       "name": "shapeMouseOver",
       "type": "JavaScript",
-      "value": "function f(event){\n    var newStyle = {\n        fillColor: event.style.fillColor,\n        //fillOpacity: 0.5,\n        strokeColor: 'yellow',\n        strokeWidth: 2,\n        zIndex:1\n    }\n    if(event.isSelected()) {\n        var clickedStyle = event.getSelectedStyle();\n        newStyle.fillColor  = clickedStyle.fillColor;\n    }\n    return newStyle;\n} "
+      "value": ""
      }
     ],
     "type": "ComponentsNewMapComponent",
@@ -1205,6 +1265,11 @@
       "name": "name",
       "type": "Id",
       "value": "map_ShapeResolver_kml"
+     },
+     {
+      "name": "parameter",
+      "value": "",
+      "type": "Parameter"
      },
      {
       "name": "listeners",
@@ -1245,6 +1310,11 @@
       "name": "defaultZoomLevel",
       "type": "Integer",
       "value": ""
+     },
+     {
+      "name": "fillOpacity",
+      "value": 0.5,
+      "type": "Float"
      },
      {
       "name": "locationResolver",
@@ -1312,6 +1382,16 @@
       "value": "/pentaho/content/pentaho-cdf-dd/resources/custom/amd-components/NewMapComponent/maps/countries.kml"
      },
      {
+      "name": "strokeColor",
+      "value": "white",
+      "type": "String"
+     },
+     {
+      "name": "strokeWidth",
+      "value": 2,
+      "type": "Float"
+     },
+     {
       "name": "tilesets",
       "type": "tilesetsCustom",
       "value": "mapquest"
@@ -1339,7 +1419,7 @@
      {
       "name": "preExecution",
       "type": "JavaScript",
-      "value": "function(){\n    this.shapeResolver = 'kml';\n    this.setAddInOptions('ShapeResolver', 'kml', {\n        idSelector: 'NAME' //selector within \"<Placemark>\" that will be used to index the feature\n    });\n\n    this.shapeSettings = {\n        strokeWidth: 1,\n        zIndex: 0,\n    }\n} \n "
+      "value": "function(){\n    this.shapeResolver = 'kml';\n    this.setAddInOptions('ShapeResolver', 'kml', {\n        idSelector: 'NAME' //selector within \"<Placemark>\" that will be used to index the feature\n    });\n} \n "
      },
      {
       "name": "postExecution",
@@ -1350,6 +1430,16 @@
       "name": "postFetch",
       "type": "JavaScript",
       "value": ""
+     },
+     {
+      "name": "preChange",
+      "value": "",
+      "type": "JavaScript"
+     },
+     {
+      "name": "postChange",
+      "value": "",
+      "type": "JavaScript"
      },
      {
       "name": "tooltip",
@@ -1369,7 +1459,7 @@
      {
       "name": "shapeMouseOver",
       "type": "JavaScript",
-      "value": "function f(event){\n    var newStyle = {\n        fillColor: event.style.fillColor,\n        //fillOpacity: 0.5,\n        strokeColor: 'yellow',\n        strokeWidth: 2,\n        zIndex:1\n    }\n    if(event.isSelected()) {\n        var clickedStyle = event.getSelectedStyle();\n        newStyle.fillColor  = clickedStyle.fillColor;\n    }\n    return newStyle;\n} "
+      "value": ""
      }
     ],
     "type": "ComponentsNewMapComponent",
@@ -1383,6 +1473,11 @@
       "name": "name",
       "type": "Id",
       "value": "map_ShapeResolver_simpleJSON"
+     },
+     {
+      "name": "parameter",
+      "value": "",
+      "type": "Parameter"
      },
      {
       "name": "listeners",
@@ -1423,6 +1518,11 @@
       "name": "defaultZoomLevel",
       "type": "Integer",
       "value": ""
+     },
+     {
+      "name": "fillOpacity",
+      "value": 0.5,
+      "type": "Float"
      },
      {
       "name": "locationResolver",
@@ -1490,6 +1590,16 @@
       "value": ""
      },
      {
+      "name": "strokeColor",
+      "value": "white",
+      "type": "String"
+     },
+     {
+      "name": "strokeWidth",
+      "value": 2,
+      "type": "Float"
+     },
+     {
       "name": "tilesets",
       "type": "tilesetsCustom",
       "value": "mapquest"
@@ -1517,7 +1627,7 @@
      {
       "name": "preExecution",
       "type": "JavaScript",
-      "value": "function(){\n    var getResource = this.dashboard.getWebAppPath() + '/plugin/pentaho-cdf-dd/api/resources';\n    this.shapeResolver = 'simpleJSON';\n    this.setAddInOptions('ShapeResolver', 'simpleJSON', {\n        url: getResource + '${solution:countries-legacy.js}'\n    });\n\n    this.shapeSettings = {\n        strokeWidth: 1,\n        zIndex: 0,\n    }\n} \n "
+      "value": "function(){\n    var getResource = this.dashboard.getWebAppPath() + '/plugin/pentaho-cdf-dd/api/resources';\n    this.shapeResolver = 'simpleJSON';\n    this.setAddInOptions('ShapeResolver', 'simpleJSON', {\n        url: getResource + '${solution:countries-legacy.js}'\n    });\n} \n "
      },
      {
       "name": "postExecution",
@@ -1528,6 +1638,16 @@
       "name": "postFetch",
       "type": "JavaScript",
       "value": ""
+     },
+     {
+      "name": "preChange",
+      "value": "",
+      "type": "JavaScript"
+     },
+     {
+      "name": "postChange",
+      "value": "",
+      "type": "JavaScript"
      },
      {
       "name": "tooltip",
@@ -1547,7 +1667,7 @@
      {
       "name": "shapeMouseOver",
       "type": "JavaScript",
-      "value": "function f(event){\n    var newStyle = {\n        fillColor: event.style.fillColor,\n        //fillOpacity: 0.5,\n        strokeColor: 'yellow',\n        strokeWidth: 2,\n        zIndex:1\n    }\n    if(event.isSelected()) {\n        var clickedStyle = event.getSelectedStyle();\n        newStyle.fillColor  = clickedStyle.fillColor;\n    }\n    return newStyle;\n} "
+      "value": ""
      }
     ],
     "type": "ComponentsNewMapComponent",
@@ -1725,7 +1845,7 @@
    }
   ]
  },
- "filename": "/home/admin/maps-require/NewMapComponent/maps_addins_reference.cdfde",
+ "filename": "/public/plugin-samples/pentaho-cdf-dd/pentaho-cdf-dd-require/tests/NewMapComponent/maps_addins_reference.cdfde",
  "layout": {
   "rows": [
    {

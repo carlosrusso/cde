@@ -80,6 +80,7 @@ define([
   './Map.selector',
   './Map.model',
   './Map.configuration',
+  './Map.featureStyles',
 
   './Map.colorMap',
   './ControlPanel/ControlPanel',
@@ -90,7 +91,8 @@ define([
   'css!./Map'
 ], function ($, _, UnmanagedComponent,
              ILifecycle,
-             ISelector, IMapModel, IConfiguration, IColorMap,
+             ISelector, IMapModel, IConfiguration, IFeatureStyle,
+             IColorMap,
              ControlPanel,
              tileServices,
              OpenLayersEngine, GoogleMapEngine) {
@@ -101,6 +103,7 @@ define([
     .extend(ISelector)
     .extend(IMapModel)
     .extend(IConfiguration)
+    .extend(IFeatureStyle)
     .extend(IColorMap)
     .extend(tileServices)
     .extend({
@@ -204,7 +207,7 @@ define([
         this.controlPanel.render();
         var me = this;
         var eventMapping = {
-          'selection:complete': _.bind(this.processChange, this),
+          'selection:complete': _.bind(this.processChange, this), //TODO: move to model setup
           'zoom:in': _.bind(this.mapEngine.zoomIn, this.mapEngine),
           'zoom:out': _.bind(this.mapEngine.zoomOut, this.mapEngine)
         };
@@ -220,7 +223,7 @@ define([
         this.mapEngine.render(this.model);
         var centerLatitude = this.configuration.viewport.center.latitude;
         var centerLongitude = this.configuration.viewport.center.longitude;
-        var defaultZoomLevel = this.configuration.viewport.default;
+        var defaultZoomLevel = this.configuration.viewport.zoomLevel.default;
         this.mapEngine.updateViewport(centerLongitude, centerLatitude, defaultZoomLevel);
       },
 
@@ -230,7 +233,7 @@ define([
         var events = [
           'marker:click', 'marker:mouseover', 'marker:mouseout',
           'shape:click', 'shape:mouseover', 'shape:mouseout',
-          'map:zoom', 'map:center'
+          'map:zoom', 'map:center' //TODO: consider renaming these to viewport:zoom and viewport:center
         ];
         _.each(events, function (event) {
           component.listenTo(engine, event, function () {
@@ -251,7 +254,7 @@ define([
           if (_.isFunction(me.markerClickFunction)) {
             result = me.markerClickFunction(event);
           }
-          if (result !== false) {
+          if (result !== false && this.model.isPanningMode()) {
             // built-in click handler for markers
             me.markerClickCallback(event);
           }
@@ -279,8 +282,12 @@ define([
           if (_.isFunction(me.shapeMouseOut)) {
             result = me.shapeMouseOut(event);
           }
-          return;
           result = _.isObject(result) ? result : {};
+          if (_.size(result) > 0) {
+            event.draw(_.defaults(result, event.style));
+          }
+          return;
+          // Disabled
           if (event.isSelected()) {
             event.draw(_.defaults(result, event.getSelectedStyle()));
           } else if (_.size(result) > 0) {
@@ -354,21 +361,19 @@ define([
           }
           $.extend(true, st, extraSt);
           var opts = $.extend(true, {}, this.getAddInOptions("MarkerImage", addIn.getName()), extraOpts);
-          var markerIconUrl = addIn.call(this.placeholder(), st, opts);
+          var markerIcon = addIn.call(this.placeholder(), st, opts);
 
           // Update model's style
-          $.extend(true, m.attributes.styleMap, {
-            pan: {
-              unselected: {
-                normal: {
-                  // TODO: works for now, for openlayers. must improve this
-                  graphicWidth: st.width,
-                  graphicHeight: st.height,
-                  externalGraphic: markerIconUrl
-                }
-              }
-            }
-          });
+          if (_.isObject(markerIcon)) {
+            $.extend(true, m.attributes.styleMap, markerIcon);
+          } else {
+            $.extend(true, m.attributes.styleMap, {
+              // TODO: works for now, for openlayers. must improve this
+              graphicWidth: st.width,
+              graphicHeight: st.height,
+              externalGraphic: markerIcon
+            });
+          }
         }
       },
 
@@ -387,30 +392,26 @@ define([
       },
 
       markerClickCallback: function (event) {
-        return;
-        var elt = event.data;
-        var defaultMarkers = event.marker.defaultMarkers;
-        var mapping = event.marker.mapping;
-        var position = event.marker.position;
+        var data = event.data;
         var me = this;
-        _.each(this.popupParameters, function (eltA) {
-          me.dashboard.fireChange(eltA[1], event.data[mapping[eltA[0].toLowerCase()]]);
-        });
+        if (this.popupContentsDiv || data[me.mapping.popupContents]) {
+          _.each(this.popupParameters, function (paramDef) {
+            me.dashboard.fireChange(paramDef[1], data[me.mapping[paramDef[0].toLowerCase()]]);
+          });
 
-        if (this.popupContentsDiv || mapping.popupContents) {
-          var contents;
-          if (mapping.popupContents) contents = elt[mapping.popupContents];
-          var height = mapping.popupContentsHeight ? elt[mapping.popupContentsHeight] : undefined;
-          var width = mapping.popupContentsWidth ? elt[mapping.popupContentsWidth] : undefined;
-          height = height || this.popupHeight;
-          width = width || this.popupWidth;
-          //  if (!contents) contents = $("#" + myself.popupContentsDiv).html();
+          var height = data[me.mapping.popupContentsHeight] || this.popupHeight;
+          var width = data[me.mapping.popupContentsWidth] || this.popupWidth;
+          var contents = data[me.mapping.popupContents] || $("#" + this.popupContentsDiv).html(); //TODO: revisit this
 
-          var borderColor = undefined;
-          if (defaultMarkers) {
+          // TODO: The following block should be revised, as it depends on too many parameters.
+          // Why should we hardcode the border colors after all?
+          var borderColor;
+          var isDefaultMarker = _.isUndefined(data.marker) && !this.markerCggGraph && _.isUndefined(me.marker) && me.configuration.addIns.MarkerImage.name === 'urlMarker';
+          if (isDefaultMarker) { // access defaultMarkers
             var borderColors = ["#394246", "#11b4eb", "#7a879a", "#e35c15", "#674f73"];
-            borderColor = borderColors[position % 5];
+            borderColor = borderColors[event.model.get('rowIdx') % borderColors.length];
           }
+
           this.mapEngine.showPopup(event.data, event.feature, height, width, contents, this.popupContentsDiv, borderColor);
         }
       }

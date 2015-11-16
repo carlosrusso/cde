@@ -16,9 +16,10 @@ define([
   'amd!cdf/lib/underscore',
   '../MapEngine',
   './MapComponentAsyncLoader',
-  '../../model/SelectionStates',
-  'css!./style-google'
-], function ($, _, MapEngine, MapComponentAsyncLoader, SelectionStates) {
+  '../../model/MapModel',
+  'css!./styleGoogle'
+], function ($, _, MapEngine, MapComponentAsyncLoader, MapModel) {
+  var SelectionStates = MapModel.SelectionStates;
 
   function OurMapOverlay(startPoint, width, height, htmlContent, popupContentDiv, map, borderColor) {
 
@@ -44,15 +45,15 @@ define([
     overlays: [],
     API_KEY: false,
     selectedFeature: undefined,
-    
-    constructor: function(options) {
+
+    constructor: function (options) {
       this.base();
       $.extend(this, options);
       this.controls = {}; // map controls
       this.controls.listenersHandle = {};
 
     },
-    
+
     init: function () {
       return $.when(MapComponentAsyncLoader('3', this.API_KEY)).then(
         function (status) {
@@ -163,14 +164,14 @@ define([
         raw: event
       };
     },
-      
+
     /*----------------------------*/
 
-    updateItem: function(modelItem) {
+    updateItem: function (modelItem) {
 
       var id = modelItem.get('id');
 
-      var style = this.toNativeStyle( modelItem.inferStyle() );
+      var style = this.toNativeStyle(modelItem.getStyle());
       var feature = this.map.data.getFeatureById(id);
 
       this.map.data.overrideStyle(feature, style);
@@ -182,7 +183,7 @@ define([
     },
 
     renderMap: function (target) {
-      
+
       var me = this;
 
       var mapOptions = {
@@ -192,25 +193,16 @@ define([
 
       // Add base map
       this.map = new google.maps.Map(target, mapOptions);
-      
+
       // Set initial styleMap for the feature 
-      this.map.data.setStyle(function(feature) {
+      this.map.data.setStyle(function (feature) {
 
         var modelItem = me.model.findWhere({id: feature.getId()});
-        var style = me.toNativeStyle( modelItem.inferStyle() );
-
-        //if (style.path == 'circle') {
-        //
-        //  $.extend(style, {path : google.maps.SymbolPath.CIRCLE} );
-        //
-        //}
-
-        if ( modelItem.getFeatureType() === 'marker' ) {
-
+        var style = me.toNativeStyle(modelItem.getStyle());
+        if (modelItem.getFeatureType() === 'marker') {
           if (!style.icon) {
             style = {icon: style};
           }
-
         }
 
         return style;
@@ -218,24 +210,21 @@ define([
       });
 
       this.addLayers();
-      
+
       this.addControls();
 
       registerViewportEvents.call(this);
 
     },
 
-    zoomExtends: function() {
-
-      var me = this;
-
+    zoomExtends: function () {
       var latlngbounds = new google.maps.LatLngBounds();
 
-      this.map.data.forEach(function(feature) {
+      this.map.data.forEach(function (feature) {
 
-        if ( feature.getGeometry().getType() == 'Point') {
+        if (feature.getGeometry().getType() == 'Point') {
 
-          latlngbounds.extend( feature.getGeometry().get() );
+          latlngbounds.extend(feature.getGeometry().get());
 
         }
 
@@ -252,20 +241,13 @@ define([
       }
 
     },
-    
+
     renderItem: function (modelItem) {
-      
-      var me = this;
-      
       if (!modelItem) {
         return;
       }
-      var row = modelItem.get('rawData');
-      var data = {
-        rawData: row,
-        key: row && row[0]
-      };
-      var featureType = modelItem.getFeatureType();
+      //var row = modelItem.get('rawData');
+      //var featureType = modelItem.getFeatureType();
       var geoJSON = modelItem.get('geoJSON');
       var me = this;
       $.when(geoJSON).then(function (feature) {
@@ -282,11 +264,11 @@ define([
         });
 
         var f = me.map.data.addGeoJson(feature, {idPropertyName: 'id'});
-        
+
       });
 
     },
-    
+
     toNativeStyle: function (foreignStyle) {
       var conversionTable = {
         // SVG standard attributes : OpenLayers2 attributes
@@ -296,6 +278,7 @@ define([
         'stroke-opacity': 'strokeOpacity',
         'stroke-width': 'strokeWeight',
         'r': 'scale',
+        'z-index': 'zIndex',
         //Backwards compatibility
         'fillColor': 'fillColor',
         'fillOpacity': 'fillOpacity',
@@ -316,17 +299,15 @@ define([
               break;
             case 'externalGraphic':
               validStyle['icon'] = value;
-              validStyle['size'] = new google.maps.Size(validStyle['graphicWidth'], validStyle['graphicHeight']);
+              validStyle['size'] = new google.maps.Size(foreignStyle['graphicWidth'], foreignStyle['graphicHeight']);
               break;
-            case 'graphicName':
-             var _gn;
+            case 'symbol':
+              var symbols = {
+                circle: google.maps.SymbolPath.CIRCLE
+              };
+              validStyle['path'] = symbols[value] || value;
 
-             if (value == 'circle') _gn = google.maps.SymbolPath.CIRCLE;
-             else _gn = value;
-
-             validStyle['path'] = _gn;
-
-             break;
+              break;
             default:
               // be permissive about the validation
               validStyle[key] = value;
@@ -337,16 +318,17 @@ define([
       //console.log('foreign vs valid:', foreignStyle, validStyle);
       return validStyle;
     },
-    
+
     addControls: function () {
-      
+
       this._addControlHover();
       //this._addControlClick();
       this._addControlZoomBox();
       this._addControlBoxSelector();
-      
+      this._addLimitZoomLimits();
+
     },
-    
+
 //    _checkSelectionContainFeature: function(area, id) {
 //
 //      if (this.model.findWhere({id:id}).get('geoJSON') != undefined) {
@@ -412,76 +394,92 @@ define([
 //
 //    },
 
-    _removelistenersHandle: function() {
-      
+    _removelistenersHandle: function () {
+
       var me = this;
 
-      _.keys(this.controls.listenersHandle).forEach(function(m) {
+      _.keys(this.controls.listenersHandle).forEach(function (m) {
 
         me.controls.listenersHandle[m].remove();
 
-      });      
-      
+      });
+
     },
-    
-    _addControlHover: function() {
+
+    _addControlHover: function () {
 
       var me = this;
 
-      var setStyle = function(event, action) {
-        
+      var setStyle = function (event, action) {
+
         var id = event.feature.getId();
-        var modelItem = me.model.findWhere({id:id});
-        
+        var modelItem = me.model.findWhere({id: id});
+
         modelItem.setHover(action === 'hover');
 
-      }
-      
-      this.map.data.addListener('mouseover', function(event) {
+      };
+
+      this.map.data.addListener('mouseover', function (event) {
         setStyle(event, 'hover');
       });
 
-      this.map.data.addListener('mouseout', function(event) {
+      this.map.data.addListener('mouseout', function (event) {
         setStyle(event, 'normal');
       });
-      
+
     },
-    
-    _addControlZoomBox: function() {
-      
-      var me = this;  
-      
+
+    _addControlZoomBox: function () {
+
+      var me = this;
+
       me.controls.zoomBox = {};
       me.controls.zoomBox.bounds = null;
       me.controls.zoomBox.gribBoundingBox = null;
       me.controls.zoomBox.mouseIsDown = false;
-      
+
     },
 
-    _addControlBoxSelector: function() {
-      
-      var me = this;  
-      
+    _addControlBoxSelector: function () {
+
+      var me = this;
+
       me.controls.boxSelector = {};
       me.controls.boxSelector.bounds = null;
       me.controls.boxSelector.gribBoundingBox = null;
       me.controls.boxSelector.mouseIsDown = false;
-      
+
     },
-    
+
     _addControlClick: function () {
-      
+
       var me = this;
-      
-      this.map.data.addListener('click', function(e) {
+
+      this.map.data.addListener('click', function (e) {
 
         var featureType = me.model.findWhere({id: event.feature.getId()}).getFeatureType();
-        
+
 //        me.trigger(featureType + ':click', me.wrapEvent(e));
         me.trigger('shape' + ':click', me.wrapEvent(e));
-        
+
       });
-      
+
+    },
+
+    _addLimitZoomLimits: function () {
+
+      var me = this;
+
+      var minZoom = _.isFinite(me.options.viewport.zoomLevel.min) ? me.options.viewport.zoomLevel.min : 0;
+      var maxZoom = _.isFinite(me.options.viewport.zoomLevel.max) ? me.options.viewport.zoomLevel.max : null;
+
+      // Limit the zoom level
+      google.maps.event.addListener(me.map, 'zoom_changed', function () {
+
+        if (me.map.getZoom() < minZoom) me.map.setZoom(minZoom);
+        else if ((!_.isNull(maxZoom)) && (me.map.getZoom() > maxZoom)) me.map.setZoom(maxZoom);  // if is NULL, max is the limit of the map
+
+      });
     },
 
     zoomIn: function () {
@@ -493,76 +491,76 @@ define([
       //console.log('zoomOut');
       this.map.setZoom(this.map.getZoom() - 1);
     },
-    
+
     setSelectionMode: function () {
-      
+
       this._removelistenersHandle();
 
       var me = this;
-      
-      me.controls.listenersHandle.click = me.map.data.addListener('click', function(event) {
-        
+
+      me.controls.listenersHandle.click = me.map.data.addListener('click', function (event) {
+
         var id = event.feature.getId();
-        var modelItem = me.model.findWhere({id:id});
-        
-        modelItem.setSelection( (modelItem.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
-              
+        var modelItem = me.model.findWhere({id: id});
+
+        modelItem.setSelection((modelItem.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
+
         me.updateItem(modelItem);
 
       });
-      
+
       me.controls.listenersHandle.mousedown = google.maps.event.addListener(this.map, 'mousedown', function (e) {
-        
+
         var mode = me.model.root().get('mode');
-        
+
         if (mode == 'selection') {
-          
-            me.controls.boxSelector.mouseIsDown = true;
-            me.controls.boxSelector.mouseDownPos = e.latLng;
-            me.map.setOptions({
-                draggable: false
-            });
+
+          me.controls.boxSelector.mouseIsDown = true;
+          me.controls.boxSelector.mouseDownPos = e.latLng;
+          me.map.setOptions({
+            draggable: false
+          });
         }
 
       });
 
       me.controls.listenersHandle.mouseup = google.maps.event.addListener(this.map, 'mouseup', function (e) {
-        
+
         var mode = me.model.root().get('mode');
-        
+
         if (mode == 'selection' && me.controls.boxSelector.mouseIsDown) {
-          
+
           me.controls.boxSelector.mouseIsDown = false;
           me.controls.boxSelector.mouseUpPos = e.latLng;
-          
+
           var boundsSelectionArea = new google.maps.LatLngBounds(
-              me.controls.boxSelector.gribBoundingBox.getBounds().getSouthWest(), 
-              me.controls.boxSelector.gribBoundingBox.getBounds().getNorthEast()
+            me.controls.boxSelector.gribBoundingBox.getBounds().getSouthWest(),
+            me.controls.boxSelector.gribBoundingBox.getBounds().getNorthEast()
           );
-          
+
           console.log('a');
-          
+
           me.model.flatten().filter(function (m) {
             return m.children() == null;
           }).each(function (m) {
-  
+
             var id = m.get('id');
 
             if (me.map.data.getFeatureById(id) != undefined) {
 
-              me.map.data.getFeatureById(id).toGeoJson(function(obj){
+              me.map.data.getFeatureById(id).toGeoJson(function (obj) {
 
-                var geometry = obj.geometry
+                var geometry = obj.geometry;
                 var result = false;
 
                 // For shape
                 if (geometry.type == 'MultiPolygon') {
 
-                  result = _.some(geometry.coordinates, function(value) {
+                  result = _.some(geometry.coordinates, function (value) {
 
-                    return _.some(value, function(value) {
+                    return _.some(value, function (value) {
 
-                      return _.some(value, function(value) {
+                      return _.some(value, function (value) {
 
                         var latLng = new google.maps.LatLng(value[1], value[0]);
 
@@ -584,11 +582,11 @@ define([
                   result = me.controls.boxSelector.gribBoundingBox.getBounds().contains(latLng);
 
                 }
-                
+
                 // Area contains shape
                 if (result) {
 
-                  m.setSelection( (m.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
+                  m.setSelection((m.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
 
                   me.updateItem(m);
                 }
@@ -600,27 +598,27 @@ define([
               });
 
             }
-            
+
           });
-          
+
           //me.map.fitBounds( boundsSelectionArea );
-          
+
           me.controls.boxSelector.gribBoundingBox.setMap(null);
           me.controls.boxSelector.gribBoundingBox = null;
 
           me.map.setOptions({
             draggable: true
           });
-          
+
         }
       });
-      
+
       me.controls.listenersHandle.mousemove = google.maps.event.addListener(this.map, 'mousemove', function (e) {
 
         var mode = me.model.root().get('mode');
-        
+
         if (mode == 'selection' && me.controls.boxSelector.mouseIsDown) {
-          
+
           if (me.controls.boxSelector.gribBoundingBox !== null) // box exists
           {
             var newbounds = new google.maps.LatLngBounds(me.controls.boxSelector.mouseDownPos, null);
@@ -638,63 +636,63 @@ define([
           }
         }
       });
-      
+
       console.log('Selection mode enable');
     },
 
     setZoomBoxMode: function () {
-      
+
       this._removelistenersHandle();
 
       var me = this;
-      
+
       me.controls.listenersHandle.mousedown = google.maps.event.addListener(this.map, 'mousedown', function (e) {
-        
+
         var mode = me.model.root().get('mode');
-        
+
         if (mode == 'zoombox') {
-          
-            me.controls.zoomBox.mouseIsDown = true;
-            me.controls.zoomBox.mouseDownPos = e.latLng;
-            me.map.setOptions({
-                draggable: false
-            });
+
+          me.controls.zoomBox.mouseIsDown = true;
+          me.controls.zoomBox.mouseDownPos = e.latLng;
+          me.map.setOptions({
+            draggable: false
+          });
         }
 
       });
 
       me.controls.listenersHandle.mouseup = google.maps.event.addListener(this.map, 'mouseup', function (e) {
-        
+
         var mode = me.model.root().get('mode');
-        
+
         if (mode == 'zoombox' && me.controls.zoomBox.mouseIsDown) {
-          
+
           me.controls.zoomBox.mouseIsDown = false;
           me.controls.zoomBox.mouseUpPos = e.latLng;
-          
+
           var boundsSelectionArea = new google.maps.LatLngBounds(
-              me.controls.zoomBox.gribBoundingBox.getBounds().getSouthWest(), 
-              me.controls.zoomBox.gribBoundingBox.getBounds().getNorthEast()
+            me.controls.zoomBox.gribBoundingBox.getBounds().getSouthWest(),
+            me.controls.zoomBox.gribBoundingBox.getBounds().getNorthEast()
           );
-          
-          me.map.fitBounds( boundsSelectionArea );
-          
+
+          me.map.fitBounds(boundsSelectionArea);
+
           me.controls.zoomBox.gribBoundingBox.setMap(null);
           me.controls.zoomBox.gribBoundingBox = null;
 
           me.map.setOptions({
             draggable: true
           });
-          
+
         }
       });
-      
+
       me.controls.listenersHandle.mousemove = google.maps.event.addListener(this.map, 'mousemove', function (e) {
 
         var mode = me.model.root().get('mode');
-        
+
         if (mode == 'zoombox' && me.controls.zoomBox.mouseIsDown) {
-          
+
           if (me.controls.zoomBox.gribBoundingBox !== null) // box exists
           {
             var newbounds = new google.maps.LatLngBounds(me.controls.zoomBox.mouseDownPos, null);
@@ -713,42 +711,42 @@ define([
           }
         }
       });
-      
-      
+
+
       console.log('Zoom mode enable');
     },
-    
-    setPanningMode: function() {
-      
+
+    setPanningMode: function () {
+
       this._removelistenersHandle();
 
       var me = this;
-      
-      me.controls.listenersHandle.click = me.map.data.addListener('click', function(event) {
-        
+
+      me.controls.listenersHandle.click = me.map.data.addListener('click', function (event) {
+
         //Unselect all features selected
-        var selectedItens = me.model.where({isSelected:true});
+        var selectedItens = me.model.where({isSelected: true});
 
-        _.each(selectedItens, function(modelItem) {
+        _.each(selectedItens, function (modelItem) {
 
-          modelItem.setSelection( SelectionStates.NONE );
+          modelItem.setSelection(SelectionStates.NONE);
 
         });
 
         // Select new item
         var id = event.feature.getId();
-        var modelItem = me.model.findWhere({id:id});
-        
-        modelItem.setSelection( (modelItem.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
+        var modelItem = me.model.findWhere({id: id});
+
+        modelItem.setSelection((modelItem.getSelection() === SelectionStates.ALL) ? SelectionStates.NONE : SelectionStates.ALL);
 
         me.updateItem(modelItem);
-        
+
       });
-      
+
       console.log('Selection mode enable');
 
     },
-    
+
     /*-----------------------------*/
 
     unselectPrevShape: function (key, shapes, shapeStyle) {
@@ -823,8 +821,8 @@ define([
           this.map.setOptions(layerOptions[k]);
         }
       }
-       
-    },      
+
+    },
 
     updateViewport: function (centerLongitude, centerLatitude, zoomLevel) {
       if (!zoomLevel) zoomLevel = 2;
@@ -832,7 +830,7 @@ define([
 
       var centerPoint;
 
-      if ( !this.zoomExtends() )
+      if (!this.zoomExtends())
         this.map.panTo(new google.maps.LatLng(38, -9));
 
       // Inicializa mapa no PanningMode

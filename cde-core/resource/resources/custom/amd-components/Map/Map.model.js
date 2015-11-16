@@ -1,16 +1,15 @@
 define([
   'cdf/lib/jquery',
   'amd!cdf/lib/underscore',
+  'cdf/Logger',
   './model/MapModel',
   './_getMapping',
   './FeatureStore/resolveShapes',
-  './FeatureStore/resolveMarkers',
-  './Map.featureStyles'
-], function ($, _,
+  './FeatureStore/resolveMarkers'
+], function ($, _, Logger,
              MapModel,
              getMapping,
-             resolveShapes, resolveMarkers,
-             Styles) {
+             resolveShapes, resolveMarkers) {
 
   return {
     resolveFeatures: function (json) {
@@ -49,7 +48,7 @@ define([
       });
 
       var seriesRoot = this._initSeries(this.mapMode, json);
-      if (json && json.metadata && json.resultset) {
+      if (json && json.metadata && json.resultset && json.resultset.length > 0) {
         this._addSeriesToModel(seriesRoot, json);
       }
 
@@ -68,8 +67,7 @@ define([
       return this.model.findWhere({id: seriesId});
     },
 
-    visualRoles: {
-    },
+    visualRoles: {},
 
     scales: {
       fill: 'default', //named colormap, or a colormap definition
@@ -102,7 +100,7 @@ define([
           var rmax = this.scales.r[1];
           var v = seriesRoot.get('extremes').r;
           //var r = rmin + (value - v.min)/(v.max - v.min)*(rmax-rmin); //linear scaling
-          var r = Math.sqrt(rmin * rmin + (rmax * rmax - rmin * rmin) * (value - v.min) / v.max - v.min); //sqrt scaling
+          var r = Math.sqrt(rmin * rmin + (rmax * rmax - rmin * rmin) * (value - v.min) / v.max - v.min); //sqrt scaling, i.e. area scales linearly with data
           if (_.isFinite(r)) {
             return r;
           }
@@ -142,13 +140,13 @@ define([
       var colNames = _.pluck(json.metadata, 'colName');
 
       var me = this;
+      var modes = this.STYLES.modes,
+        states = this.STYLES.states,
+        actions = this.STYLES.actions;
       var series = _.map(json.resultset, function (row, rowIdx) {
 
-        var id = row[mapping.id];
+        var id = me._getItemId(mapping, row, rowIdx);
         var styleMap = {};
-        var modes = ['pan', 'zoombox', 'selection'],
-          states = ['unselected', 'selected'],
-          actions = ['normal', 'hover'];
 
         _.each(modes, function (mode) {
           _.each(states, function (state) {
@@ -195,24 +193,20 @@ define([
       seriesRoot.add(series);
     },
 
-    getStyleMap: function (styleName) {
-      var localStyleMap = _.result(this, 'styleMap') || {};
-      var styleMap = $.extend(true, {}, Styles.getStyleMap(styleName), localStyleMap.global, localStyleMap[styleName]);
-      // TODO: should we just drop this?
-      switch (styleName) {
-        case 'shape0s':
-          return $.extend(true, styleMap, {
-            pan: {
-              unselected: {
-                normal: this.shapeSettings
-              }
-            }
-          });
+    _getItemId: function (mapping, row, rowIdx) {
+      var indexId = mapping.id;
+      if (!_.isFinite(indexId)) {
+        if (this.mapMode === 'shapes') {
+          indexId = 0;
+        } else {
+          indexId = -1; //Use rowIdx instead
+        }
       }
-      return styleMap;
+      var id = (indexId >= 0 && indexId < row.length) ? row[indexId] : rowIdx;
+      return id;
     }
 
-
   };
+
 
 });

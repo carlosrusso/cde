@@ -42,13 +42,13 @@ define([
 
     var colNames = _.chain(json.metadata)
       .pluck('colName')
-      .map( function(s){
+      .map(function (s) {
         return s.toLowerCase();
       })
       .value();
 
     var map = _.chain(colNames)
-      .map(function(colName, idx){
+      .map(function (colName, idx) {
         var property = colToPropertyMapping[colName];
         if (property) {
           return [property, idx];
@@ -60,14 +60,15 @@ define([
       .object()
       .value();
 
-    if ('latitude' in map || 'longitude' in map){
+    if ('latitude' in map || 'longitude' in map) {
       map.addressType = 'coordinates';
     }
-    if ('address' in map  && !map.addressType){
+    if ('address' in map && !map.addressType) {
       map.addressType = 'address';
     }
-    if (!map.id){
-      map.id = 0; //TODO: reconsider this. We may need to want to use rowIdx instead
+
+    if (!map.id) {
+      map.id = 0; //TODO: evaluate if this sort of hardcoding is really necessary
     }
 
     return map;
